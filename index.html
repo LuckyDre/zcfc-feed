@@ -395,8 +395,8 @@
 
 <script>
 // ── CONFIG ──
-const API_KEY = 'rhnfukeli5ia7tzhkrxm9rqomeypwb5l';
-const API_URL = 'https://api.hollandsevelden.nl/competities/2025-2026/west-1/za/5a/';
+
+const API_URL = 'https://zcfc-api.ntxzjzzg8m.workers.dev';
 const ZCFC    = 'ZCFC';
 const CACHE_KEY = 'zcfc_api_cache';
 const CACHE_TS  = 'zcfc_api_ts';
@@ -421,7 +421,7 @@ async function fetchData() {
       return JSON.parse(cached);
     }
     const res = await fetch(API_URL, {
-      headers: { 'X-Api-Key': API_KEY }
+      headers: {}
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
