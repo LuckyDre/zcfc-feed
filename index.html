@@ -296,14 +296,55 @@
   </div>
 </nav>
 
+
 <!-- OVERZICHT -->
 <section class="section active" id="sec-overzicht">
+
+  <!-- COUNTDOWN -->
+  <div id="countdown-box" style="background:linear-gradient(135deg,rgba(249,115,22,0.12),rgba(249,115,22,0.04));border:1px solid rgba(249,115,22,0.3);border-radius:16px;padding:18px 16px;margin-bottom:12px;text-align:center;display:none">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);margin-bottom:8px" id="countdown-match">Volgende wedstrijd</div>
+    <div style="display:flex;justify-content:center;gap:16px;margin-bottom:10px">
+      <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:40px;font-weight:800;color:var(--text);line-height:1" id="cd-days">—</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:2px">Dagen</div></div>
+      <div style="font-size:36px;color:var(--accent);line-height:1.1;font-weight:300">:</div>
+      <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:40px;font-weight:800;color:var(--text);line-height:1" id="cd-hours">—</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:2px">Uren</div></div>
+      <div style="font-size:36px;color:var(--accent);line-height:1.1;font-weight:300">:</div>
+      <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:40px;font-weight:800;color:var(--text);line-height:1" id="cd-mins">—</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:2px">Min</div></div>
+      <div style="font-size:36px;color:var(--accent);line-height:1.1;font-weight:300">:</div>
+      <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:40px;font-weight:800;color:var(--text);line-height:1" id="cd-secs">—</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:2px">Sec</div></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted)" id="countdown-loc">—</div>
+  </div>
+
+  <!-- NIEUWS BANNER -->
+  <div id="nieuws-banner" style="display:none;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:11px 14px;margin-bottom:12px;font-size:12px;color:var(--green);line-height:1.5"></div>
+
+  <!-- STAT STRIP -->
   <div class="stat-strip" id="stat-strip">
     <div class="stat-cell"><div class="stat-val" style="color:var(--accent)" id="s-pos">—</div><div class="stat-lbl">Positie</div></div>
     <div class="stat-cell"><div class="stat-val" id="s-pts">—</div><div class="stat-lbl">Punten</div></div>
     <div class="stat-cell"><div class="stat-val" style="color:var(--green)" id="s-w">—</div><div class="stat-lbl">W</div></div>
     <div class="stat-cell"><div class="stat-val" style="color:var(--orange)" id="s-g">—</div><div class="stat-lbl">G</div></div>
     <div class="stat-cell"><div class="stat-val" style="color:var(--red)" id="s-v">—</div><div class="stat-lbl">V</div></div>
+  </div>
+
+  <!-- PUNTEN DOEL + AANVAL/VERDEDIGING -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+    <div class="card" style="padding:12px;text-align:center">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin-bottom:6px">Plek 4 bereiken</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--text)" id="pts-needed">—</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">punten nodig</div>
+    </div>
+    <div class="card" style="padding:12px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin-bottom:8px">Aanval & verdediging</div>
+      <div style="font-size:11px;display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="color:var(--muted)">Beste aanval</span>
+        <span id="best-attack" style="color:var(--green);font-weight:500">—</span>
+      </div>
+      <div style="font-size:11px;display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">Sterkste def.</span>
+        <span id="best-defence" style="color:var(--blue);font-weight:500">—</span>
+      </div>
+    </div>
   </div>
 
   <div class="sec-label">Komend programma</div>
@@ -557,6 +598,11 @@ function renderAll(comp) {
 
   // ── OVERZICHT ──
   renderOverzicht(zcfcResults, zcfcProgram, table, zcfcRow);
+  renderNieuws(zcfcResults);
+  renderStats(table, zcfcRow);
+
+  // Countdown op eerste komende ZCFC wedstrijd
+  startCountdown(zcfcProgram[0] || null);
 
   // ── VORM ──
   renderVorm(table, results);
@@ -856,7 +902,119 @@ function showError(msg) {
   document.getElementById('last-updated').textContent = 'Fout';
 }
 
-// ── WACHTWOORD ──
+// ── COUNTDOWN ──
+let countdownInterval = null;
+
+function startCountdown(nextMatch) {
+  const box = document.getElementById('countdown-box');
+  if (!nextMatch) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+
+  const isHome = nextMatch.home === ZCFC;
+  const opp = isHome ? nextMatch.away : nextMatch.home;
+  document.getElementById('countdown-match').textContent =
+    isHome ? `ZCFC vs ${opp}` : `${opp} vs ZCFC`;
+  document.getElementById('countdown-loc').textContent =
+    isHome ? '🏟 Thuis · Sportpark Kalverhoek' : `🏟 Uit · ${fmtDateFull(nextMatch.date)} · ${fmtTime(nextMatch.date)}`;
+
+  if (countdownInterval) clearInterval(countdownInterval);
+
+  function tick() {
+    const now  = new Date();
+    const target = new Date(nextMatch.date);
+    const diff = target - now;
+    if (diff <= 0) {
+      document.getElementById('cd-days').textContent  = '0';
+      document.getElementById('cd-hours').textContent = '00';
+      document.getElementById('cd-mins').textContent  = '00';
+      document.getElementById('cd-secs').textContent  = '00';
+      clearInterval(countdownInterval);
+      return;
+    }
+    const days  = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins  = Math.floor((diff % 3600000)  / 60000);
+    const secs  = Math.floor((diff % 60000)    / 1000);
+    document.getElementById('cd-days').textContent  = days;
+    document.getElementById('cd-hours').textContent = String(hours).padStart(2,'0');
+    document.getElementById('cd-mins').textContent  = String(mins).padStart(2,'0');
+    document.getElementById('cd-secs').textContent  = String(secs).padStart(2,'0');
+  }
+  tick();
+  countdownInterval = setInterval(tick, 1000);
+}
+
+// ── NIEUWS BANNER ──
+function renderNieuws(zcfcResults) {
+  const banner = document.getElementById('nieuws-banner');
+  if (!zcfcResults.length) { banner.style.display = 'none'; return; }
+
+  const last = zcfcResults[0]; // nieuwste eerst
+  const chronological = [...zcfcResults].sort((a,b) => new Date(a.date) - new Date(b.date));
+  const recentResults = chronological.slice(-5).map(m => resultOf(m, ZCFC));
+
+  // Reeks tellen
+  let streak = 0;
+  let streakType = recentResults[recentResults.length - 1];
+  for (let i = recentResults.length - 1; i >= 0; i--) {
+    if (recentResults[i] === streakType) streak++;
+    else break;
+  }
+
+  const lastRes = resultOf(last, ZCFC);
+  const isHome  = last.home === ZCFC;
+  const opp     = isHome ? last.away : last.home;
+  const score   = isHome ? `${last.homeGoals}–${last.awayGoals}` : `${last.awayGoals}–${last.homeGoals}`;
+
+  let msg = '';
+  if (lastRes === 'W') {
+    msg = streak >= 3
+      ? `🔥 ZCFC wint voor de ${streak}e keer op rij! ${score} tegen ${opp}.`
+      : streak === 2
+      ? `✅ ZCFC wint weer! ${score} tegen ${opp}. Twee overwinningen op rij.`
+      : `✅ ZCFC wint met ${score} van ${opp}.`;
+  } else if (lastRes === 'G') {
+    msg = `➖ ZCFC speelt gelijk: ${score} tegen ${opp}.`;
+  } else {
+    msg = streak >= 3
+      ? `⚠️ ZCFC verliest voor de ${streak}e keer op rij: ${score} van ${opp}.`
+      : `❌ ZCFC verliest met ${score} van ${opp}.`;
+  }
+
+  banner.style.display = 'block';
+  banner.style.color = lastRes === 'W' ? 'var(--green)' : lastRes === 'G' ? 'var(--orange)' : 'var(--red)';
+  banner.style.background = lastRes === 'W' ? 'rgba(34,197,94,0.08)' : lastRes === 'G' ? 'rgba(249,115,22,0.08)' : 'rgba(239,68,68,0.08)';
+  banner.style.borderColor = lastRes === 'W' ? 'rgba(34,197,94,0.2)' : lastRes === 'G' ? 'rgba(249,115,22,0.2)' : 'rgba(239,68,68,0.2)';
+  banner.textContent = msg;
+}
+
+// ── AANVAL / VERDEDIGING / PUNTEN DOEL ──
+function renderStats(table, zcfcRow) {
+  // Beste aanval
+  const bestAttack = [...table].sort((a,b) => b.goalsFor - a.goalsFor)[0];
+  document.getElementById('best-attack').textContent =
+    bestAttack ? `${bestAttack.name} (${bestAttack.goalsFor})` : '—';
+
+  // Sterkste defensie (minste tegendoelpunten)
+  const bestDefence = [...table].sort((a,b) => a.goalsAgainst - b.goalsAgainst)[0];
+  document.getElementById('best-defence').textContent =
+    bestDefence ? `${bestDefence.name} (${bestDefence.goalsAgainst})` : '—';
+
+  // Punten nodig voor plek 4
+  const pos4 = table.find(t => t.position === 4);
+  if (pos4 && zcfcRow.position > 4) {
+    const needed = Math.max(0, pos4.points - zcfcRow.points + 1);
+    document.getElementById('pts-needed').textContent = needed;
+  } else if (zcfcRow.position <= 4) {
+    document.getElementById('pts-needed').textContent = '✓';
+    document.querySelector('#pts-needed').style.color = 'var(--green)';
+    document.querySelector('[data-label="plek4"]') && (document.querySelector('[data-label="plek4"]').textContent = 'Al in top 4!');
+  } else {
+    document.getElementById('pts-needed').textContent = '—';
+  }
+}
+
+
 const PW = 'Scores@ZCFC';
 
 function unlockScorers() {
