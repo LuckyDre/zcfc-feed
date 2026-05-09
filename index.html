@@ -613,9 +613,12 @@ function renderAll(comp) {
   // Bouw clubInfo map voor gebruik in stand én clublinks
   const clubInfo = {};
   related.forEach(r => {
+    // Shirt: API geeft "t_245.png" → URL is /i/t/t_245.png
+    // Logo:  API geeft "zcfc.webp" → URL is /images/icon/club_logo_van_voetbalvereniging_zcfc.webp
+    const logoSlug = r.logo ? r.logo.replace(/\.webp$/, '') : null;
     clubInfo[r.name] = {
-      shirt: r.shirt ? `https://www.hollandsevelden.nl/images/shirts/${r.shirt}` : null,
-      logo:  r.logo  ? `https://www.hollandsevelden.nl/images/logos/${r.logo}`  : null,
+      shirt: r.shirt ? `https://www.hollandsevelden.nl/i/t/${r.shirt}` : null,
+      logo:  logoSlug ? `https://www.hollandsevelden.nl/images/icon/club_logo_van_voetbalvereniging_${logoSlug}.webp` : null,
       href:  r.href  ? r.href.replace('https://api.hollandsevelden.nl/clubs/', 'https://www.hollandsevelden.nl/clubs/') : null
     };
   });
