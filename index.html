@@ -1120,10 +1120,10 @@ function renderNieuws(zcfcResults, allResults) {
     html += `<div style="display:flex;flex-direction:column;gap:4px;">`;
     rondeWedstrijden.forEach(m => {
       const isZcfcMatch = m.home === ZCFC || m.away === ZCFC;
-      html += `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;${isZcfcMatch?'font-weight:600;':'opacity:0.8;'}">
-        <span>${m.home}</span>
-        <span style="font-family:'DM Mono',monospace;margin:0 8px">${m.homeGoals}–${m.awayGoals}</span>
-        <span style="text-align:right">${m.away}</span>
+      html += `<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;font-size:12px;padding:2px 0;${isZcfcMatch?'font-weight:600;':'opacity:0.8;'}">
+        <span style="text-align:right">${m.home}</span>
+        <span style="font-family:'DM Mono',monospace;text-align:center;min-width:36px">${m.homeGoals}–${m.awayGoals}</span>
+        <span style="text-align:left">${m.away}</span>
       </div>`;
     });
     html += `</div>`;
