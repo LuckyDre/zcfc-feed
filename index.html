@@ -611,7 +611,6 @@ function renderAll(comp) {
   // ── OVERZICHT ──
   renderOverzicht(zcfcResults, zcfcProgram, table, zcfcRow);
   renderNieuws(zcfcResults);
-  renderStats(table, zcfcRow);
 
   // Countdown op eerste komende ZCFC wedstrijd
   startCountdown(zcfcProgram[0] || null);
@@ -1069,33 +1068,7 @@ function renderNieuws(zcfcResults) {
   banner.textContent = msg;
 }
 
-// ── AANVAL / VERDEDIGING / PUNTEN DOEL ──
-function renderStats(table, zcfcRow) {
-  // Beste aanval
-  const bestAttack = [...table].sort((a,b) => b.goalsFor - a.goalsFor)[0];
-  document.getElementById('best-attack').textContent =
-    bestAttack ? `${bestAttack.name} (${bestAttack.goalsFor})` : '—';
-
-  // Sterkste defensie (minste tegendoelpunten)
-  const bestDefence = [...table].sort((a,b) => a.goalsAgainst - b.goalsAgainst)[0];
-  document.getElementById('best-defence').textContent =
-    bestDefence ? `${bestDefence.name} (${bestDefence.goalsAgainst})` : '—';
-
-  // Punten nodig voor plek 4
-  const pos4 = table.find(t => t.position === 4);
-  if (pos4 && zcfcRow.position > 4) {
-    const needed = Math.max(0, pos4.points - zcfcRow.points + 1);
-    document.getElementById('pts-needed').textContent = needed;
-  } else if (zcfcRow.position <= 4) {
-    document.getElementById('pts-needed').textContent = '✓';
-    document.querySelector('#pts-needed').style.color = 'var(--green)';
-    document.querySelector('[data-label="plek4"]') && (document.querySelector('[data-label="plek4"]').textContent = 'Al in top 4!');
-  } else {
-    document.getElementById('pts-needed').textContent = '—';
-  }
-}
-
-
+// ── WACHTWOORD ──
 const PW = 'Scores@ZCFC';
 
 function unlockScorers() {
