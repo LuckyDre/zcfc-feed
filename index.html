@@ -753,26 +753,6 @@ function renderMatches(zcfcResults) {
 }
 
 function renderOverzicht(zcfcResults, zcfcProgram, table, zcfcRow) {
-  // Programma
-  const progEl = document.getElementById('ov-programma');
-  progEl.innerHTML = '';
-  const nextMatches = zcfcProgram.slice(0, 3);
-  if (!nextMatches.length) {
-    progEl.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px 0">Geen wedstrijden gepland</div>';
-  } else {
-    nextMatches.forEach(m => {
-      const isHome = m.home === ZCFC;
-      const opp = isHome ? m.away : m.home;
-      const d = document.createElement('div');
-      d.className = 'upcoming-item';
-      d.innerHTML = `
-        <div class="upcoming-date">${fmtDateFull(m.date)} · ${fmtTime(m.date)}</div>
-        <div class="upcoming-match">${isHome?`<span class="zcfc">ZCFC</span> vs ${opp}`:`${opp} vs <span class="zcfc">ZCFC</span>`}</div>
-        <div class="upcoming-loc">🏟 ${isHome?'Thuis · Sportpark Kalverhoek':'Uit'}</div>`;
-      progEl.appendChild(d);
-    });
-  }
-
   // Recente vorm (laatste 4)
   const last4 = zcfcResults.slice(-4);
   const dotsEl = document.getElementById('ov-vorm-dots');
