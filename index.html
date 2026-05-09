@@ -1132,18 +1132,30 @@ function renderNieuws(zcfcResults, allResults) {
   banner.innerHTML = html;
 }
 
-// ── WACHTWOORD ──
-const PW = 'Scores@ZCFC';
+// ── TOPSCORERS VIA WORKER ──
+const WORKER = 'https://zcfc-proxy.ntxzjzzg8m.workers.dev';
 
-function unlockScorers() {
+async function unlockScorers() {
   const pw = document.getElementById('scorer-pw').value;
-  if (pw === PW) {
+  try {
+    const res = await fetch(`${WORKER}/scorers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw, scorers: await loadScorers() })
+    });
+    const data = await res.json();
+    if (res.status === 401) {
+      document.getElementById('pw-error').style.display = 'block';
+      return;
+    }
     document.getElementById('scorer-locked').style.display = 'none';
     document.getElementById('scorer-unlocked').style.display = 'block';
     document.getElementById('pw-error').style.display = 'none';
     document.getElementById('scorer-pw').value = '';
     sessionStorage.setItem('zcfc_unlocked', '1');
-  } else {
+    sessionStorage.setItem('zcfc_pw', pw);
+  } catch(e) {
+    document.getElementById('pw-error').textContent = 'Verbindingsfout, probeer opnieuw';
     document.getElementById('pw-error').style.display = 'block';
   }
 }
@@ -1152,78 +1164,78 @@ function lockScorers() {
   document.getElementById('scorer-locked').style.display = 'block';
   document.getElementById('scorer-unlocked').style.display = 'none';
   sessionStorage.removeItem('zcfc_unlocked');
+  sessionStorage.removeItem('zcfc_pw');
 }
 
-// Herstel unlock na paginawissel binnen sessie
 if (sessionStorage.getItem('zcfc_unlocked')) {
   document.getElementById('scorer-locked').style.display = 'none';
   document.getElementById('scorer-unlocked').style.display = 'block';
 }
 
-// Enter-toets werkt ook voor wachtwoord
 document.getElementById('scorer-pw').addEventListener('keydown', e => {
   if (e.key === 'Enter') unlockScorers();
 });
 
-// ── TOPSCORERS ──
-const SCORERS_KEY = 'zcfc_topscorers';
-
-function loadScorers() {
-  try { return JSON.parse(localStorage.getItem(SCORERS_KEY)) || []; }
-  catch(e) { return []; }
+async function loadScorers() {
+  try {
+    const res = await fetch(`${WORKER}/scorers`);
+    return await res.json();
+  } catch(e) { return []; }
 }
 
-function saveScorer() {
+async function saveScorer() {
   const name    = document.getElementById('scorer-name').value.trim();
   const goals   = parseInt(document.getElementById('scorer-goals').value) || 0;
   const assists = parseInt(document.getElementById('scorer-assists').value) || 0;
   if (!name) { alert('Vul een naam in'); return; }
 
-  let scorers = loadScorers();
+  let scorers = await loadScorers();
   const idx = scorers.findIndex(s => s.name.toLowerCase() === name.toLowerCase());
-  if (idx >= 0) {
-    scorers[idx].goals   = goals;
-    scorers[idx].assists = assists;
-  } else {
-    scorers.push({ name, goals, assists });
-  }
+  if (idx >= 0) { scorers[idx].goals = goals; scorers[idx].assists = assists; }
+  else scorers.push({ name, goals, assists });
   scorers.sort((a,b) => b.goals - a.goals || b.assists - a.assists);
-  localStorage.setItem(SCORERS_KEY, JSON.stringify(scorers));
-  localStorage.setItem('zcfc_scorers_ts', new Date().toLocaleDateString('nl-NL', { day:'numeric', month:'long', year:'numeric' }));
+
+  const pw = sessionStorage.getItem('zcfc_pw');
+  const res = await fetch(`${WORKER}/scorers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: pw, scorers })
+  });
+
+  if (res.status === 401) { alert('Sessie verlopen, log opnieuw in'); lockScorers(); return; }
 
   document.getElementById('scorer-name').value   = '';
   document.getElementById('scorer-goals').value  = '';
   document.getElementById('scorer-assists').value = '';
-  renderScorers();
-}
-
-function clearScorers() {
-  if (confirm('Weet je zeker dat je alle scorers wilt wissen?')) {
-    localStorage.removeItem(SCORERS_KEY);
-    localStorage.removeItem('zcfc_scorers_ts');
-    renderScorers();
-  }
-}
-
-function renderScorers() {
-  const scorers = loadScorers();
-  const ts      = localStorage.getItem('zcfc_scorers_ts') || '—';
+  const ts = new Date().toLocaleDateString('nl-NL', { day:'numeric', month:'long', year:'numeric' });
   document.getElementById('scorers-updated').textContent = ts;
+  renderScorers(scorers, ts);
+}
 
+async function clearScorers() {
+  if (!confirm('Weet je zeker dat je alle scorers wilt wissen?')) return;
+  const pw = sessionStorage.getItem('zcfc_pw');
+  await fetch(`${WORKER}/scorers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: pw, scorers: [] })
+  });
+  renderScorers([], '—');
+}
+
+function renderScorers(scorers, ts) {
+  if (ts) document.getElementById('scorers-updated').textContent = ts;
   const el = document.getElementById('topscorers-list');
   el.innerHTML = '';
-
-  if (!scorers.length) {
+  if (!scorers || !scorers.length) {
     el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:16px 0">Nog geen scorers toegevoegd</div>';
     return;
   }
-
   scorers.forEach((s, i) => {
     const isTop = i === 0;
     const div = document.createElement('div');
     div.style.cssText = `display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04);`;
     if (i === scorers.length - 1) div.style.borderBottom = 'none';
-
     div.innerHTML = `
       <span style="font-size:${isTop?'16px':'12px'};min-width:20px;text-align:center">${isTop?'🥇':i===1?'🥈':i===2?'🥉':i+1}</span>
       <div style="flex:1;min-width:0">
@@ -1247,8 +1259,8 @@ function editScorer(name, goals, assists) {
   document.getElementById('scorer-form-card').scrollIntoView({ behavior:'smooth' });
 }
 
-// Initialiseer scorers
-renderScorers();
+// Initialiseer scorers bij laden
+loadScorers().then(scorers => renderScorers(scorers, null));
 
 // ── NAVIGATIE ──
 const sections = {
