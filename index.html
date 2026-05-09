@@ -334,6 +334,12 @@
   <div class="sec-label">Volledige stand</div>
   <div class="card"><table class="stand-table" id="full-stand"><tbody><tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div>
   <div class="note-box" id="stand-note">Stand wordt geladen…</div>
+
+  <div class="sec-label">Periode 1</div>
+  <div class="card"><table class="stand-table" id="period1-stand"><tbody><tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div>
+
+  <div class="sec-label">Periode 2</div>
+  <div class="card"><table class="stand-table" id="period2-stand"><tbody><tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div>
 </section>
 
 <!-- VORM -->
@@ -543,6 +549,8 @@ function renderAll(comp) {
 
   // ── STAND ──
   renderStand(table, zcfcRow, zcfcResults);
+  renderPeriod(data.period1 || [], 'period1-stand');
+  renderPeriod(data.period2 || [], 'period2-stand');
 
   // ── MATCHES ──
   renderMatches(zcfcResults);
@@ -562,6 +570,7 @@ function renderAll(comp) {
 }
 
 function renderStand(table, zcfcRow, zcfcResults) {
+  // ── HOOFDSTAND ──
   const el = document.getElementById('full-stand');
   el.innerHTML = '<thead><tr><th class="l">#</th><th class="l">Club</th><th>G</th><th>Pnt</th><th>DS</th></tr></thead>';
   const tb = document.createElement('tbody');
@@ -579,7 +588,7 @@ function renderStand(table, zcfcRow, zcfcResults) {
   });
   el.appendChild(tb);
 
-  // Mini stand (3 boven en 3 onder ZCFC)
+  // ── MINI STAND ──
   const pos = zcfcRow.position || 1;
   const mini = table.filter(t => t.position >= Math.max(1,pos-2) && t.position <= Math.min(table.length,pos+2));
   const ms = document.getElementById('mini-stand');
@@ -597,6 +606,29 @@ function renderStand(table, zcfcRow, zcfcResults) {
     mtb.appendChild(tr);
   });
   ms.appendChild(mtb);
+}
+
+function renderPeriod(data, elementId) {
+  const el = document.getElementById(elementId);
+  if (!data || !data.length) {
+    el.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);font-size:12px;padding:12px">Geen data beschikbaar</td></tr>';
+    return;
+  }
+  el.innerHTML = '<thead><tr><th class="l">#</th><th class="l">Club</th><th>G</th><th>Pnt</th><th>DS</th></tr></thead>';
+  const tb = document.createElement('tbody');
+  data.forEach(t => {
+    const ds = (t.goalsFor||0) - (t.goalsAgainst||0);
+    const tr = document.createElement('tr');
+    if (t.name === ZCFC) tr.className = 'zcfc-row';
+    tr.innerHTML = `
+      <td class="l" style="color:var(--muted);font-size:11px">${t.position}</td>
+      <td class="l">${t.name}${t.name===ZCFC?' ★':''}</td>
+      <td>${t.matches||0}</td>
+      <td class="pts-hi">${t.points||0}</td>
+      <td style="font-size:11px">${ds>=0?'+':''}${ds}</td>`;
+    tb.appendChild(tr);
+  });
+  el.appendChild(tb);
 }
 
 function renderMatches(zcfcResults) {
