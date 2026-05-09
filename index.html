@@ -610,8 +610,18 @@ function renderAll(comp) {
 
   const related = data.links?.related || [];
 
+  // Bouw clubInfo map voor gebruik in stand én clublinks
+  const clubInfo = {};
+  related.forEach(r => {
+    clubInfo[r.name] = {
+      shirt: r.shirt ? `https://www.hollandsevelden.nl/images/shirts/${r.shirt}` : null,
+      logo:  r.logo  ? `https://www.hollandsevelden.nl/images/logos/${r.logo}`  : null,
+      href:  r.href  ? r.href.replace('https://api.hollandsevelden.nl/clubs/', 'https://www.hollandsevelden.nl/clubs/') : null
+    };
+  });
+
   // ── STAND ──
-  renderStand(table, zcfcRow, zcfcResults, related);
+  renderStand(table, zcfcRow, zcfcResults, clubInfo);
   renderPeriod(data.period1 || [], 'period1-stand');
   renderPeriod(data.period2 || [], 'period2-stand');
 
@@ -662,17 +672,7 @@ function renderAll(comp) {
     `${table.length} clubs · ${zcfcRow.matches||0} wedstrijden gespeeld · Kampioen promoveert naar 4e klasse`;
 }
 
-function renderStand(table, zcfcRow, zcfcResults, related) {
-  // Bouw een map van clubnaam naar shirt/href
-  const clubInfo = {};
-  if (related) related.forEach(r => {
-    const shirtNum = r.shirt ? r.shirt.replace('.png','') : null;
-    clubInfo[r.name] = {
-      shirt: shirtNum ? `https://www.hollandsevelden.nl/images/shirts/${r.shirt}` : null,
-      logo:  r.logo   ? `https://www.hollandsevelden.nl/images/logos/${r.logo}`   : null,
-      href:  r.href   ? r.href.replace('https://api.hollandsevelden.nl/clubs/', 'https://www.hollandsevelden.nl/clubs/') : null
-    };
-  });
+function renderStand(table, zcfcRow, zcfcResults, clubInfo) {
 
   // ── HOOFDSTAND ──
   const el = document.getElementById('full-stand');
