@@ -353,6 +353,9 @@
     </div>
   </div>
 
+  <!-- PLEK 4 BLOKJE -->
+  <div id="plek4-box" style="display:none;margin-bottom:12px"></div>
+
   <div class="sec-label">Recente vorm ZCFC (laatste 4)</div>
   <div class="card">
     <div style="display:flex;gap:10px;margin-bottom:12px" id="ov-vorm-dots"><div class="loading"><div class="spinner"></div></div></div>
@@ -611,6 +614,43 @@ function renderAll(comp) {
   // ── OVERZICHT ──
   renderOverzicht(zcfcResults, zcfcProgram, table, zcfcRow);
   renderNieuws(zcfcResults, results);
+
+  // ── PLEK 4 BLOKJE ──
+  const plek4box = document.getElementById('plek4-box');
+  const pos4team = table.find(t => t.position === 4);
+  const zcfcPos  = zcfcRow.position || 99;
+  if (pos4team && zcfcPos > 4) {
+    const wedstrijdenNog = (table[0]?.matches || 0) * 2 - (zcfcRow.matches || 0); // ruwe schatting
+    const ptsNodig = pos4team.points - zcfcRow.points + 1;
+    const maxHaalbaar = (zcfcRow.matches !== undefined ? (table[0]?.matches - zcfcRow.matches) * 3 : 0);
+    const nogMogelijk = ptsNodig <= maxHaalbaar;
+    plek4box.style.display = 'block';
+    plek4box.innerHTML = `
+      <div class="card" style="padding:12px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin-bottom:4px">Plek 4 bereiken</div>
+          <div style="font-size:11px;color:var(--muted)">Nu ${zcfcRow.points}pt · ${pos4team.name} heeft ${pos4team.points}pt</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:${nogMogelijk?'var(--orange)':'var(--red)'}">
+            ${ptsNodig > 0 ? '+' + ptsNodig : '✓'}
+          </div>
+          <div style="font-size:10px;color:var(--muted)">${nogMogelijk ? 'punten nodig' : 'niet meer haalbaar'}</div>
+        </div>
+      </div>`;
+  } else if (zcfcPos <= 4) {
+    plek4box.style.display = 'block';
+    plek4box.innerHTML = `
+      <div class="card" style="padding:12px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin-bottom:4px">Plek 4</div>
+          <div style="font-size:11px;color:var(--muted)">ZCFC staat al in de top 4!</div>
+        </div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--green)">✓</div>
+      </div>`;
+  } else {
+    plek4box.style.display = 'none';
+  }
 
   // Countdown op eerste komende ZCFC wedstrijd
   startCountdown(zcfcProgram[0] || null);
