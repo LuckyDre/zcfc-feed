@@ -504,8 +504,8 @@
 
 const API_URL = 'https://zcfc-proxy.ntxzjzzg8m.workers.dev';
 const ZCFC    = 'ZCFC';
-const CACHE_KEY = 'zcfc_api_cache';
-const CACHE_TS  = 'zcfc_api_ts';
+const CACHE_KEY = 'zcfc_api_cache_v2';
+const CACHE_TS  = 'zcfc_api_ts_v2';
 
 // ── CACHE TTL (ms) op basis van dag/tijd ──
 function getTTL() {
@@ -610,7 +610,7 @@ function renderAll(comp) {
 
   // ── OVERZICHT ──
   renderOverzicht(zcfcResults, zcfcProgram, table, zcfcRow);
-  renderNieuws(zcfcResults);
+  renderNieuws(zcfcResults, results);
 
   // Countdown op eerste komende ZCFC wedstrijd
   startCountdown(zcfcProgram[0] || null);
@@ -1025,7 +1025,7 @@ function startCountdown(nextMatch) {
 }
 
 // ── NIEUWS BANNER ──
-function renderNieuws(zcfcResults) {
+function renderNieuws(zcfcResults, allResults) {
   const banner = document.getElementById('nieuws-banner');
   if (!zcfcResults.length) { banner.style.display = 'none'; return; }
 
@@ -1046,26 +1046,50 @@ function renderNieuws(zcfcResults) {
   const opp     = isHome ? last.away : last.home;
   const score   = isHome ? `${last.homeGoals}–${last.awayGoals}` : `${last.awayGoals}–${last.homeGoals}`;
 
-  let msg = '';
+  let zcfcMsg = '';
   if (lastRes === 'W') {
-    msg = streak >= 3
+    zcfcMsg = streak >= 3
       ? `🔥 ZCFC wint voor de ${streak}e keer op rij! ${score} tegen ${opp}.`
       : streak === 2
       ? `✅ ZCFC wint weer! ${score} tegen ${opp}. Twee overwinningen op rij.`
       : `✅ ZCFC wint met ${score} van ${opp}.`;
   } else if (lastRes === 'G') {
-    msg = `➖ ZCFC speelt gelijk: ${score} tegen ${opp}.`;
+    zcfcMsg = `➖ ZCFC speelt gelijk: ${score} tegen ${opp}.`;
   } else {
-    msg = streak >= 3
+    zcfcMsg = streak >= 3
       ? `⚠️ ZCFC verliest voor de ${streak}e keer op rij: ${score} van ${opp}.`
       : `❌ ZCFC verliest met ${score} van ${opp}.`;
   }
+
+  // Alle wedstrijden van dezelfde speelronde (zelfde datum als laatste ZCFC wedstrijd)
+  const lastDate = last.date.substring(0, 10);
+  const rondeWedstrijden = allResults
+    .filter(m => m.status === 'Uitgespeeld' && m.date.substring(0, 10) === lastDate)
+    .sort((a,b) => a.home.localeCompare(b.home));
 
   banner.style.display = 'block';
   banner.style.color = lastRes === 'W' ? 'var(--green)' : lastRes === 'G' ? 'var(--orange)' : 'var(--red)';
   banner.style.background = lastRes === 'W' ? 'rgba(34,197,94,0.08)' : lastRes === 'G' ? 'rgba(249,115,22,0.08)' : 'rgba(239,68,68,0.08)';
   banner.style.borderColor = lastRes === 'W' ? 'rgba(34,197,94,0.2)' : lastRes === 'G' ? 'rgba(249,115,22,0.2)' : 'rgba(239,68,68,0.2)';
-  banner.textContent = msg;
+
+  // Opbouw HTML
+  let html = `<div style="font-weight:600;margin-bottom:8px">${zcfcMsg}</div>`;
+
+  if (rondeWedstrijden.length > 1) {
+    html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin-bottom:6px;opacity:0.8">Alle uitslagen deze ronde</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:4px;">`;
+    rondeWedstrijden.forEach(m => {
+      const isZcfcMatch = m.home === ZCFC || m.away === ZCFC;
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;${isZcfcMatch?'font-weight:600;':'opacity:0.8;'}">
+        <span>${m.home}</span>
+        <span style="font-family:'DM Mono',monospace;margin:0 8px">${m.homeGoals}–${m.awayGoals}</span>
+        <span style="text-align:right">${m.away}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  banner.innerHTML = html;
 }
 
 // ── WACHTWOORD ──
