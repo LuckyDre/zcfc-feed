@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ZCFC Nieuwsfeed — 5e klasse A West 1</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root {
     --green: #22c55e;
@@ -385,6 +386,15 @@
 
 <!-- VORM -->
 <section class="section" id="sec-vorm">
+  <div class="sec-label">Puntopbouw per speelronde — directe concurrenten</div>
+  <div class="card" style="padding:14px 10px 10px">
+    <div id="chart-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;font-size:11px;color:var(--muted)"></div>
+    <div style="position:relative;width:100%;height:220px">
+      <canvas id="vorm-chart" role="img" aria-label="Lijndiagram puntopbouw per speelronde voor ZCFC en directe concurrenten"></canvas>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center">X = speelronde · Y = cumulatieve punten</div>
+  </div>
+
   <div class="sec-label">Vorm laatste 4 wedstrijden — alle clubs</div>
   <div class="note-box">
     <span style="color:var(--green)">●</span> Winst &nbsp;
@@ -606,6 +616,7 @@ function renderAll(comp) {
 
   // ── VORM ──
   renderVorm(table, results);
+  renderVormChart(table, results, zcfcRow);
 
   // ── PROGNOSE ──
   renderPrognose(table, results, program);
@@ -886,6 +897,94 @@ function renderPrognose(table, results, program) {
         </div>`;
       pc.appendChild(box);
     });
+  });
+}
+
+// ── VORM GRAFIEK ──
+let vormChart = null;
+const CHART_COLORS = {
+  'ZCFC':                { line:'#f97316', bg:'rgba(249,115,22,0.1)' },
+  'ASC De Volewijckers': { line:'#3b82f6', bg:'rgba(59,130,246,0.08)' },
+  'AFC IJburg':          { line:'#8b5cf6', bg:'rgba(139,92,246,0.08)' },
+  'VV Opperdoes':        { line:'#22c55e', bg:'rgba(34,197,94,0.08)' },
+  'De Blokkers':         { line:'#ef4444', bg:'rgba(239,68,68,0.08)' },
+  'Sp. Krommenie':       { line:'#06b6d4', bg:'rgba(6,182,212,0.08)' },
+  'Sporting Krommenie':  { line:'#06b6d4', bg:'rgba(6,182,212,0.08)' },
+  'Wieringermeer':       { line:'#eab308', bg:'rgba(234,179,8,0.08)' },
+};
+
+function getCumPoints(teamName, results) {
+  return results
+    .filter(m => (m.home === teamName || m.away === teamName) && m.status === 'Uitgespeeld')
+    .sort((a,b) => new Date(a.date) - new Date(b.date))
+    .reduce((acc, m) => {
+      const prev = acc.length ? acc[acc.length-1] : 0;
+      return [...acc, prev + ptsOf(resultOf(m, teamName))];
+    }, []);
+}
+
+function renderVormChart(table, results, zcfcRow) {
+  const zcfcPos = zcfcRow.position || 5;
+  const concurrenten = table
+    .filter(t => t.position >= Math.max(1, zcfcPos-2) && t.position <= Math.min(table.length, zcfcPos+2))
+    .map(t => t.name);
+
+  const maxRounds = Math.max(...concurrenten.map(name =>
+    results.filter(m => (m.home===name||m.away===name) && m.status==='Uitgespeeld').length
+  ));
+
+  const labels = ['Start', ...Array.from({length:maxRounds}, (_,i) => `R${i+1}`)];
+
+  const datasets = concurrenten.map(name => {
+    const data = [0, ...getCumPoints(name, results)];
+    while (data.length < labels.length) data.push(null);
+    const c = CHART_COLORS[name] || { line:'#6b7280', bg:'transparent' };
+    const isZcfc = name === ZCFC;
+    return {
+      label: name,
+      data,
+      borderColor: c.line,
+      backgroundColor: isZcfc ? c.bg : 'transparent',
+      fill: isZcfc,
+      tension: 0.3,
+      borderWidth: isZcfc ? 3 : 1.5,
+      pointRadius: isZcfc ? 3 : 2,
+      pointBackgroundColor: c.line,
+      spanGaps: true,
+    };
+  });
+
+  // Legenda
+  const legendEl = document.getElementById('chart-legend');
+  legendEl.innerHTML = '';
+  concurrenten.forEach(name => {
+    const c = CHART_COLORS[name] || { line:'#6b7280' };
+    const isZcfc = name === ZCFC;
+    const item = document.createElement('div');
+    item.style.cssText = 'display:flex;align-items:center;gap:4px;';
+    item.innerHTML = `<span style="width:${isZcfc?20:14}px;height:${isZcfc?3:2}px;background:${c.line};border-radius:2px;display:inline-block"></span>
+      <span style="color:${isZcfc?'var(--accent)':'var(--muted)'};font-weight:${isZcfc?'600':'400'}">${name}</span>`;
+    legendEl.appendChild(item);
+  });
+
+  if (vormChart) vormChart.destroy();
+  const ctx = document.getElementById('vorm-chart').getContext('2d');
+  vormChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display:false },
+        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y??'—'} pt` } }
+      },
+      scales: {
+        x: { ticks:{ font:{size:10}, maxRotation:0, autoSkip:true, maxTicksLimit:12 }, grid:{display:false} },
+        y: { min:0, ticks:{ stepSize:5, font:{size:10} }, grid:{ color:'rgba(255,255,255,0.05)' } }
+      }
+    }
   });
 }
 
