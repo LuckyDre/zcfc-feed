@@ -535,7 +535,7 @@ function renderAll(comp) {
 
   // ZCFC wedstrijden (gespeeld)
   const zcfcResults = results.filter(m => m.home === ZCFC || m.away === ZCFC)
-    .sort((a,b) => new Date(a.date) - new Date(b.date));
+    .sort((a,b) => new Date(b.date) - new Date(a.date));
 
   // ZCFC programma (nog te spelen)
   const zcfcProgram = program.filter(m => m.home === ZCFC || m.away === ZCFC)
@@ -604,19 +604,30 @@ function renderMatches(zcfcResults) {
   el.innerHTML = '';
   if (!zcfcResults.length) { el.innerHTML = '<div class="loading"><span>Nog geen gespeelde wedstrijden</span></div>'; return; }
 
+  // Bereken cumulatieve punten op chronologische volgorde
+  const chronological = [...zcfcResults].sort((a,b) => new Date(a.date) - new Date(b.date));
+  const cumMap = {};
   let cum = 0;
-  const last4start = Math.max(0, zcfcResults.length - 4);
-  zcfcResults.forEach((m, i) => {
+  chronological.forEach(m => {
     const res = resultOf(m, ZCFC);
     cum += ptsOf(res);
+    cumMap[m.date + m.home + m.away] = cum;
+  });
+
+  // Toon nieuwste bovenaan
+  zcfcResults.forEach((m, i) => {
+    const res = resultOf(m, ZCFC);
     const isHome = m.home === ZCFC;
     const opp = isHome ? m.away : m.home;
     const score = isHome ? `${m.homeGoals}–${m.awayGoals}` : `${m.awayGoals}–${m.homeGoals}`;
+    const cumPts = cumMap[m.date + m.home + m.away];
+    const rnd = chronological.findIndex(c => c.date === m.date && c.home === m.home && c.away === m.away) + 1;
+    const isLast4 = rnd > chronological.length - 4;
     const d = document.createElement('div');
     d.className = 'match-row';
-    if (i >= last4start) d.style.background = 'rgba(249,115,22,0.05)';
+    if (isLast4) d.style.background = 'rgba(249,115,22,0.05)';
     d.innerHTML = `
-      <span class="match-rnd">${i+1}</span>
+      <span class="match-rnd">${rnd}</span>
       <div class="match-info">
         <div class="match-opp">${opp}</div>
         <div class="match-meta">${fmtDate(m.date)} · ${isHome?'Thuis':'Uit'}</div>
@@ -624,7 +635,7 @@ function renderMatches(zcfcResults) {
       <div class="match-right">
         <span class="match-score">${score}</span>
         <span class="badge ${bCls[res]}">${res}</span>
-        <span class="match-cum">${cum}pt</span>
+        <span class="match-cum">${cumPts}pt</span>
       </div>`;
     el.appendChild(d);
   });
