@@ -730,8 +730,8 @@ function renderAll(comp) {
     // Logo:  API geeft "zcfc.webp" → URL is /images/icon/club_logo_van_voetbalvereniging_zcfc.webp
     const logoSlug = r.logo ? r.logo.replace(/\.webp$/, '') : null;
     clubInfo[r.name] = {
-      shirt: r.shirt ? `https://www.hollandsevelden.nl/i/t/${r.shirt}` : null,
-      logo:  logoSlug ? `https://www.hollandsevelden.nl/images/icon/club_logo_van_voetbalvereniging_${logoSlug}.webp` : null,
+      shirt: r.shirt ? `${WORKER}/shirt?f=${r.shirt}` : null,
+      logo:  logoSlug ? `${WORKER}/logo?f=${logoSlug}` : null,
       href:  r.href  ? r.href.replace('https://api.hollandsevelden.nl/clubs/', 'https://www.hollandsevelden.nl/clubs/') : null
     };
   });
