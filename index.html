@@ -86,7 +86,7 @@
   .nav-btn {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    padding: 8px 0 6px; font-size: 9px; color: var(--muted);
+    padding: 6px 0 5px; font-size: 8px; color: var(--muted);
     gap: 3px; cursor: pointer; transition: color 0.15s;
     user-select: none; letter-spacing: 0.03em; text-transform: uppercase;
   }
@@ -294,6 +294,7 @@
     <div class="nav-btn-d" data-tab="prognose" style="padding:11px 16px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:0.04em;">Kansen</div>
     <div class="nav-btn-d" data-tab="topscorers" style="padding:11px 16px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:0.04em;">Scorers</div>
     <div class="nav-btn-d" data-tab="club" style="padding:11px 16px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:0.04em;">Club</div>
+    <div class="nav-btn-d" data-tab="selectie" style="padding:11px 16px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:0.04em;">Selectie</div>
   </div>
 </nav>
 
@@ -323,6 +324,25 @@
       <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:40px;font-weight:800;color:var(--text);line-height:1" id="cd-secs">—</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:2px">Sec</div></div>
     </div>
     <div style="font-size:12px;color:var(--muted)" id="countdown-loc">—</div>
+  </div>
+
+
+  <!-- WEER WEDSTRIJD -->
+  <div id="weer-box" style="display:none;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;margin-bottom:12px;">
+    <!-- Header -->
+    <div style="background:rgba(255,255,255,0.04);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:600">Weer tijdens wedstrijd</div>
+        <div style="font-size:12px;color:var(--text);margin-top:2px" id="weer-locatie">—</div>
+      </div>
+      <div style="font-size:28px" id="weer-icon">—</div>
+    </div>
+    <!-- Uurblokken -->
+    <div id="weer-uren" style="display:flex;overflow-x:auto;gap:0;padding:0;scrollbar-width:none;"></div>
+    <!-- Footer -->
+    <div style="padding:8px 14px;font-size:10px;color:var(--muted);background:rgba(255,255,255,0.02)">
+      Bron: <a href="https://open-meteo.com" style="color:var(--muted)" target="_blank">Open-Meteo</a> · KNMI model · locatie thuisclub
+    </div>
   </div>
 
   <!-- NIEUWS BANNER -->
@@ -490,6 +510,96 @@
   </div>
 </section>
 
+
+<!-- SELECTIE -->
+<section class="section" id="sec-selectie">
+  <div class="sec-label">Selectie ZCFC — volgende wedstrijd</div>
+
+  <!-- Leesweergave: 3 groepen -->
+  <div id="selectie-view">
+    <!-- BASIS -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--green);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green)"></span>
+        Basiself
+        <span id="basis-count" style="color:var(--muted);font-weight:400"></span>
+      </div>
+      <div class="card" id="selectie-basis-list" style="padding:8px 14px">
+        <div style="text-align:center;color:var(--muted);font-size:12px;padding:12px 0">Nog geen selectie ingevoerd</div>
+      </div>
+    </div>
+
+    <!-- RESERVE -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--orange);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--orange)"></span>
+        Reserve
+        <span id="reserve-count" style="color:var(--muted);font-weight:400"></span>
+      </div>
+      <div class="card" id="selectie-reserve-list" style="padding:8px 14px">
+        <div style="text-align:center;color:var(--muted);font-size:12px;padding:12px 0">Geen reserves</div>
+      </div>
+    </div>
+
+    <!-- NIET MEE -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted)"></span>
+        Niet mee
+        <span id="niet-count" style="color:var(--muted);font-weight:400"></span>
+      </div>
+      <div class="card" id="selectie-niet-list" style="padding:8px 14px">
+        <div style="text-align:center;color:var(--muted);font-size:12px;padding:12px 0">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BEHEER -->
+  <div class="sec-label" style="margin-top:4px">Beheer</div>
+  <div class="card" id="selectie-form-card">
+
+    <!-- VERGRENDELD -->
+    <div id="selectie-locked">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">
+        Voer het beheerwachtwoord in om de selectie te beheren.
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input id="selectie-pw" type="password" placeholder="Wachtwoord" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;outline:none;flex:1">
+        <button onclick="unlockSelectie()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Barlow',sans-serif;">Unlock</button>
+      </div>
+      <div id="selectie-pw-error" style="font-size:11px;color:var(--red);margin-top:8px;display:none">Onjuist wachtwoord</div>
+    </div>
+
+    <!-- ONTGRENDELD -->
+    <div id="selectie-unlocked" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <span style="font-size:12px;color:var(--green)">🔓 Beheer actief</span>
+        <button onclick="lockSelectie()" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--muted);cursor:pointer">Vergrendelen</button>
+      </div>
+
+      <!-- Speler toevoegen -->
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px">Speler toevoegen / bijwerken</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+        <div style="display:flex;gap:8px;">
+          <input id="sel-nummer" type="number" min="1" max="99" placeholder="Nr" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;outline:none;width:68px;flex-shrink:0">
+          <input id="sel-naam" type="text" placeholder="Naam speler" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;outline:none;flex:1">
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="setSelStatus('basis')" id="btn-basis" style="flex:1;border-radius:8px;padding:10px 6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Barlow',sans-serif;border:2px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.1);color:var(--green)">✅ Basis</button>
+          <button onclick="setSelStatus('reserve')" id="btn-reserve" style="flex:1;border-radius:8px;padding:10px 6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Barlow',sans-serif;border:2px solid rgba(249,115,22,0.3);background:rgba(249,115,22,0.08);color:var(--orange)">🔄 Reserve</button>
+          <button onclick="setSelStatus('niet')" id="btn-niet" style="flex:1;border-radius:8px;padding:10px 6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Barlow',sans-serif;border:2px solid rgba(107,114,128,0.3);background:rgba(107,114,128,0.08);color:var(--muted)">❌ Niet mee</button>
+        </div>
+      </div>
+
+      <!-- Volledige selectie bewerken -->
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px">Huidige selectie</div>
+      <div id="selectie-edit-list" style="margin-bottom:12px"></div>
+
+      <button onclick="clearSelectie()" style="width:100%;background:rgba(239,68,68,0.1);color:var(--red);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px;font-size:12px;cursor:pointer;font-family:'Barlow',sans-serif;">Selectie wissen</button>
+    </div>
+
+  </div>
+</section>
 <!-- FOOTER met verplichte dofollow-links -->
 <footer>
   <div>Competitiedata: <a href="https://www.hollandsevelden.nl" rel="dofollow">Hollandse Velden</a> · <a href="https://www.voetbalinbelgie.be" rel="dofollow">Voetbal in België</a> · <a href="https://www.liguesdefoot.fr" rel="dofollow">Ligues de Foot</a></div>
@@ -504,6 +614,7 @@
   <div class="nav-btn" data-tab="vorm"><span class="nav-icon">📈</span><span>Vorm</span></div>
   <div class="nav-btn" data-tab="prognose"><span class="nav-icon">🎯</span><span>Kansen</span></div>
   <div class="nav-btn" data-tab="topscorers"><span class="nav-icon">🥅</span><span>Scorers</span></div>
+  <div class="nav-btn" data-tab="selectie"><span class="nav-icon">👕</span><span>Selectie</span></div>
   <div class="nav-btn" data-tab="club"><span class="nav-icon">ℹ️</span><span>Club</span></div>
 </nav>
 
@@ -527,6 +638,8 @@ function getTTL() {
 }
 
 // ── DATA OPHALEN MET CACHING ──
+let clubInfo = {};  // globaal beschikbaar voor alle renderfuncties
+
 async function fetchData() {
   try {
     const cached = sessionStorage.getItem(CACHE_KEY);
@@ -611,7 +724,7 @@ function renderAll(comp) {
   const related = data.links?.related || [];
 
   // Bouw clubInfo map voor gebruik in stand én clublinks
-  const clubInfo = {};
+  clubInfo = {};  // hergebruik global
   related.forEach(r => {
     // Shirt: API geeft "t_245.png" → URL is /i/t/t_245.png
     // Logo:  API geeft "zcfc.webp" → URL is /images/icon/club_logo_van_voetbalvereniging_zcfc.webp
@@ -637,6 +750,7 @@ function renderAll(comp) {
 
   // Countdown op eerste komende ZCFC wedstrijd
   startCountdown(zcfcProgram[0] || null);
+  fetchWeer(zcfcProgram[0] || null);
 
   // ── VORM ──
   renderVorm(table, results);
@@ -730,17 +844,24 @@ function renderStand(table, zcfcRow, zcfcResults, clubInfo) {
 function renderPeriod(data, elementId) {
   const el = document.getElementById(elementId);
   if (!data || !data.length) {
-    el.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);font-size:12px;padding:12px">Geen data beschikbaar</td></tr>';
+    el.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);font-size:12px;padding:12px">Geen data beschikbaar</td></tr>';
     return;
   }
-  el.innerHTML = '<thead><tr><th class="l">#</th><th class="l">Club</th><th>G</th><th>Pnt</th><th>DS</th></tr></thead>';
+  el.innerHTML = '<thead><tr><th class="l">#</th><th class="l" colspan="2">Club</th><th>G</th><th>Pnt</th><th>DS</th></tr></thead>';
   const tb = document.createElement('tbody');
   data.forEach(t => {
     const ds = (t.goalsFor||0) - (t.goalsAgainst||0);
+    const info = clubInfo[t.name] || {};
+    const imgHtml = info.logo
+      ? `<img src="${info.logo}" style="width:18px;height:18px;object-fit:contain;vertical-align:middle" onerror="this.src='${info.shirt||''}';this.onerror=function(){this.style.display='none'}">`
+      : info.shirt
+      ? `<img src="${info.shirt}" style="width:18px;height:18px;object-fit:contain;vertical-align:middle" onerror="this.style.display='none'">`
+      : '';
     const tr = document.createElement('tr');
     if (t.name === ZCFC) tr.className = 'zcfc-row';
     tr.innerHTML = `
       <td class="l" style="color:var(--muted);font-size:11px">${t.position}</td>
+      <td class="l" style="width:24px;padding-right:0">${imgHtml}</td>
       <td class="l">${t.name}${t.name===ZCFC?' ★':''}</td>
       <td>${t.matches||0}</td>
       <td class="pts-hi">${t.points||0}</td>
@@ -779,6 +900,7 @@ function renderMatches(zcfcResults) {
     if (isLast4) d.style.background = 'rgba(249,115,22,0.05)';
     d.innerHTML = `
       <span class="match-rnd">${rnd}</span>
+      ${(()=>{const i=clubInfo[opp]||{};return i.logo?`<img src="${i.logo}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;flex-shrink:0" onerror="this.src='${i.shirt||''}';this.onerror=function(){this.style.display='none'}">`:i.shirt?`<img src="${i.shirt}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;flex-shrink:0" onerror="this.style.display='none'">`:''})()}
       <div class="match-info">
         <div class="match-opp">${opp}</div>
         <div class="match-meta">${fmtDate(m.date)} · ${isHome?'Thuis':'Uit'}</div>
@@ -851,6 +973,7 @@ function renderVorm(table, results) {
     div.className = 'vorm-row';
     div.innerHTML = `
       <span class="vorm-pos">${t.position}</span>
+      ${(()=>{const i=clubInfo[t.name]||{};return i.logo?`<img src="${i.logo}" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;flex-shrink:0" onerror="this.src='${i.shirt||''}';this.onerror=function(){this.style.display='none'}">`:i.shirt?`<img src="${i.shirt}" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;flex-shrink:0" onerror="this.style.display='none'">`:''})()}
       <span class="vorm-name ${t.name===ZCFC?'zcfc':''}">${t.name}${t.name===ZCFC?' ★':''}</span>
       <div class="vorm-dots">
         ${form.map(r => `<span class="vorm-dot" style="background:${r!=='—'?dotC[r]+'22':'rgba(107,114,128,0.1)'};color:${r!=='—'?dotC[r]:'var(--muted)'}">${r}</span>`).join('')}
@@ -918,12 +1041,12 @@ function renderPrognose(table, results, program) {
       box.innerHTML = `
         <div class="prognose-teams">
           <div style="flex:1;min-width:0">
-            <div class="prognose-team-name ${hZ?'zcfc':''}">${m.home}</div>
+            <div class="prognose-team-name ${hZ?'zcfc':''}" style="display:flex;align-items:center;gap:5px">${(()=>{const i=clubInfo[m.home]||{};return i.logo?`<img src="${i.logo}" style="width:16px;height:16px;object-fit:contain" onerror="this.src='${i.shirt||''}';this.onerror=function(){this.style.display='none'}">`:i.shirt?`<img src="${i.shirt}" style="width:16px;height:16px;object-fit:contain" onerror="this.style.display='none'">`:''})()}${m.home}</div>
             <div class="prognose-sub">${hPts}pt · Th · ${hForm.length?hForm.join(' '):'–'}</div>
           </div>
           <div class="prognose-vs">vs</div>
           <div style="flex:1;min-width:0;text-align:right">
-            <div class="prognose-team-name ${aZ?'zcfc':''}">${m.away}</div>
+            <div class="prognose-team-name ${aZ?'zcfc':''}" style="display:flex;align-items:center;justify-content:flex-end;gap:5px">${m.away}${(()=>{const i=clubInfo[m.away]||{};return i.logo?`<img src="${i.logo}" style="width:16px;height:16px;object-fit:contain" onerror="this.src='${i.shirt||''}';this.onerror=function(){this.style.display='none'}">`:i.shirt?`<img src="${i.shirt}" style="width:16px;height:16px;object-fit:contain" onerror="this.style.display='none'">`:''})()}</div>
             <div class="prognose-sub">${aPts}pt · Ui · ${aForm.length?aForm.join(' '):'–'}</div>
           </div>
         </div>
@@ -1283,11 +1406,350 @@ function editScorer(name, goals, assists) {
 // Initialiseer scorers bij laden
 loadScorers().then(scorers => renderScorers(scorers, null));
 
+
+// ── SELECTIE ──
+async function loadSelectie() {
+  try {
+    const res = await fetch(`${WORKER}/selectie`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch(e) { return []; }
+}
+
+async function saveSelectieData(spelers) {
+  const pw = sessionStorage.getItem('zcfc_pw');
+  const res = await fetch(`${WORKER}/selectie`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: pw, selectie: spelers })
+  });
+  return res.status !== 401;
+}
+
+function renderSelectie(spelers) {
+  const basis   = spelers.filter(s => s.status === 'basis')  .sort((a,b) => (a.nummer||99)-(b.nummer||99));
+  const reserve = spelers.filter(s => s.status === 'reserve').sort((a,b) => (a.nummer||99)-(b.nummer||99));
+  const niet    = spelers.filter(s => s.status === 'niet')   .sort((a,b) => (a.nummer||99)-(b.nummer||99));
+
+  document.getElementById('basis-count').textContent   = basis.length   ? `(${basis.length})` : '';
+  document.getElementById('reserve-count').textContent = reserve.length ? `(${reserve.length})` : '';
+  document.getElementById('niet-count').textContent    = niet.length    ? `(${niet.length})` : '';
+
+  renderSelectieGroep('selectie-basis-list',   basis,   'var(--green)',  'Nog geen basisspelers ingesteld');
+  renderSelectieGroep('selectie-reserve-list', reserve, 'var(--orange)', 'Geen reserves');
+  renderSelectieGroep('selectie-niet-list',    niet,    'var(--muted)',  '—');
+  renderSelectieEditList(spelers);
+}
+
+function renderSelectieGroep(elId, spelers, kleur, leegTekst) {
+  const el = document.getElementById(elId);
+  if (!spelers.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:12px;padding:10px 0">${leegTekst}</div>`;
+    return;
+  }
+  el.innerHTML = spelers.map((s, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:${i < spelers.length-1 ? '1px solid rgba(255,255,255,0.04)' : 'none'}">
+      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);min-width:24px;text-align:right">${s.nummer || '—'}</span>
+      <span style="font-size:13px;color:${kleur};flex:1">${s.naam}</span>
+    </div>`).join('');
+}
+
+function renderSelectieEditList(spelers) {
+  const el = document.getElementById('selectie-edit-list');
+  if (!el) return;
+  const gesorteerd = [...spelers].sort((a,b) => (a.nummer||99)-(b.nummer||99));
+  if (!gesorteerd.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:10px 0">Nog geen spelers toegevoegd</div>';
+    return;
+  }
+
+  const statusKleur = { basis:'var(--green)', reserve:'var(--orange)', niet:'var(--muted)' };
+  const statusLabel = { basis:'Basis', reserve:'Reserve', niet:'Niet mee' };
+
+  el.innerHTML = gesorteerd.map(s => `
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);min-width:24px;text-align:right">${s.nummer || '—'}</span>
+      <span style="font-size:13px;flex:1">${s.naam}</span>
+      <span style="font-size:10px;color:${statusKleur[s.status]};min-width:52px;text-align:right">${statusLabel[s.status]}</span>
+      <button onclick="editSelSpeler('${s.naam.replace(/'/g,"\\'")}',${s.nummer||''},'${s.status}')"
+        style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--muted);cursor:pointer">✏️</button>
+      <button onclick="deleteSelSpeler('${s.naam.replace(/'/g,"\\'")}')","
+        style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--red);cursor:pointer">✕</button>
+    </div>`).join('');
+}
+
+let _selCache = [];
+
+function editSelSpeler(naam, nummer, status) {
+  document.getElementById('sel-naam').value   = naam;
+  document.getElementById('sel-nummer').value = nummer || '';
+  _selActiveStatus = status;
+  highlightSelBtn(status);
+  document.getElementById('sel-naam').focus();
+  document.getElementById('selectie-form-card').scrollIntoView({ behavior:'smooth' });
+}
+
+async function deleteSelSpeler(naam) {
+  _selCache = _selCache.filter(s => s.naam.toLowerCase() !== naam.toLowerCase());
+  const ok = await saveSelectieData(_selCache);
+  if (!ok) { alert('Sessie verlopen, log opnieuw in'); lockSelectie(); return; }
+  renderSelectie(_selCache);
+}
+
+let _selActiveStatus = 'basis';
+
+function highlightSelBtn(status) {
+  _selActiveStatus = status;
+  const map = {
+    basis:   { id:'btn-basis',   activeStyle:'border-color:var(--green);background:rgba(34,197,94,0.2)' },
+    reserve: { id:'btn-reserve', activeStyle:'border-color:var(--orange);background:rgba(249,115,22,0.2)' },
+    niet:    { id:'btn-niet',    activeStyle:'border-color:var(--muted);background:rgba(107,114,128,0.18)' }
+  };
+  Object.entries(map).forEach(([s, cfg]) => {
+    const btn = document.getElementById(cfg.id);
+    if (!btn) return;
+    if (s === status) {
+      btn.style.cssText += ';' + cfg.activeStyle + ';opacity:1';
+    } else {
+      btn.style.opacity = '0.45';
+    }
+  });
+}
+
+async function setSelStatus(status) {
+  highlightSelBtn(status);
+  const naam   = document.getElementById('sel-naam').value.trim();
+  const numVal = document.getElementById('sel-nummer').value;
+  const nummer = numVal !== '' ? parseInt(numVal) : null;
+
+  if (!naam) {
+    // alleen status-knop actief zetten, nog geen naam → niets opslaan
+    return;
+  }
+
+  const idx = _selCache.findIndex(s => s.naam.toLowerCase() === naam.toLowerCase());
+  if (idx >= 0) {
+    _selCache[idx].status  = status;
+    _selCache[idx].nummer  = nummer;
+  } else {
+    _selCache.push({ naam, nummer, status });
+  }
+
+  const ok = await saveSelectieData(_selCache);
+  if (!ok) { alert('Sessie verlopen, log opnieuw in'); lockSelectie(); return; }
+
+  document.getElementById('sel-naam').value   = '';
+  document.getElementById('sel-nummer').value = '';
+  _selActiveStatus = 'basis';
+  highlightSelBtn('basis');
+  renderSelectie(_selCache);
+}
+
+async function clearSelectie() {
+  if (!confirm('Weet je zeker dat je de volledige selectie wilt wissen?')) return;
+  _selCache = [];
+  await saveSelectieData([]);
+  renderSelectie([]);
+}
+
+async function unlockSelectie() {
+  const pw = document.getElementById('selectie-pw').value;
+  try {
+    // Valideer wachtwoord via de scorers endpoint (zelfde pw)
+    const res = await fetch(`${WORKER}/scorers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw, scorers: await loadScorers() })
+    });
+    if (res.status === 401) {
+      document.getElementById('selectie-pw-error').style.display = 'block';
+      return;
+    }
+    sessionStorage.setItem('zcfc_unlocked', '1');
+    sessionStorage.setItem('zcfc_pw', pw);
+    document.getElementById('selectie-pw-error').style.display = 'none';
+    document.getElementById('selectie-pw').value = '';
+    document.getElementById('selectie-locked').style.display   = 'none';
+    document.getElementById('selectie-unlocked').style.display = 'block';
+    highlightSelBtn('basis');
+  } catch(e) {
+    document.getElementById('selectie-pw-error').textContent = 'Verbindingsfout, probeer opnieuw';
+    document.getElementById('selectie-pw-error').style.display = 'block';
+  }
+}
+
+function lockSelectie() {
+  document.getElementById('selectie-locked').style.display   = 'block';
+  document.getElementById('selectie-unlocked').style.display = 'none';
+  sessionStorage.removeItem('zcfc_unlocked');
+  sessionStorage.removeItem('zcfc_pw');
+  // ook scorers vergrendelen voor consistentie
+  lockScorers();
+}
+
+document.getElementById('selectie-pw').addEventListener('keydown', e => {
+  if (e.key === 'Enter') unlockSelectie();
+});
+
+document.getElementById('sel-naam').addEventListener('keydown', e => {
+  if (e.key === 'Enter') setSelStatus(_selActiveStatus);
+});
+
+// Auto-unlock als sessie al actief is
+if (sessionStorage.getItem('zcfc_unlocked')) {
+  document.getElementById('selectie-locked').style.display   = 'none';
+  document.getElementById('selectie-unlocked').style.display = 'block';
+}
+
+// Laad selectie bij start
+loadSelectie().then(spelers => {
+  _selCache = spelers;
+  renderSelectie(spelers);
+  if (sessionStorage.getItem('zcfc_unlocked')) highlightSelBtn('basis');
+});
+
+
+// ── WEER ──
+// Coördinaten van thuisparken alle poule-clubs (lat, lng)
+const CLUB_COORDS = {
+  'ZCFC':               { lat: 52.4777, lng: 4.8720, naam: 'Sportpark Kalverhoek, Zaandam' },
+  'AFC IJburg':         { lat: 52.3532, lng: 5.0003, naam: 'Sportpark IJburg, Amsterdam' },
+  'ASC De Volewijckers':{ lat: 52.4021, lng: 4.9478, naam: 'Sportpark de Toekomst Noord, Amsterdam' },
+  'VV Opperdoes':       { lat: 52.7497, lng: 5.0722, naam: 'Sportpark Opperdoes' },
+  'De Blokkers':        { lat: 52.6482, lng: 5.1203, naam: 'Sportpark De Blokkers, Blokker' },
+  'Wieringermeer':      { lat: 52.8193, lng: 4.9908, naam: 'Sportpark Slootdorp' },
+  'Sporting Krommenie': { lat: 52.4881, lng: 4.7637, naam: 'Sportpark Krommenie' },
+  'SC Purmerland':      { lat: 52.4868, lng: 4.9613, naam: 'Sportpark Purmerland' },
+  'SV Koedijk':         { lat: 52.6491, lng: 4.7602, naam: 'Sportpark Koedijk' },
+  'Alcmaria Victrix':   { lat: 52.6274, lng: 4.7437, naam: 'Sportpark Alkmaar' },
+  'SV DTS':             { lat: 52.6844, lng: 5.0213, naam: 'Sportpark Oud Karspel' },
+};
+
+const WMO = {
+  0:'☀️',1:'🌤️',2:'⛅',3:'☁️',
+  45:'🌫️',48:'🌫️',
+  51:'🌦️',53:'🌦️',55:'🌧️',
+  61:'🌧️',63:'🌧️',65:'🌧️',
+  71:'🌨️',73:'🌨️',75:'❄️',
+  77:'🌨️',
+  80:'🌦️',81:'🌧️',82:'⛈️',
+  85:'🌨️',86:'❄️',
+  95:'⛈️',96:'⛈️',99:'⛈️',
+};
+const WMO_LABEL = {
+  0:'Helder',1:'Vrijwel helder',2:'Half bewolkt',3:'Bewolkt',
+  45:'Mist',48:'Rijpmist',
+  51:'Lichte motregen',53:'Motregen',55:'Zware motregen',
+  61:'Lichte regen',63:'Regen',65:'Zware regen',
+  71:'Lichte sneeuw',73:'Sneeuw',75:'Zware sneeuw',77:'Sneeuwkorrels',
+  80:'Buien',81:'Zware buien',82:'Stortbuien',
+  85:'Sneeuwbuien',86:'Zware sneeuwbuien',
+  95:'Onweer',96:'Onweer met hagel',99:'Zwaar onweer',
+};
+
+function windLabel(kmh) {
+  if (kmh < 6)  return 'Windstil';
+  if (kmh < 12) return 'Zwak';
+  if (kmh < 20) return 'Matig';
+  if (kmh < 29) return 'Vrij matig';
+  if (kmh < 39) return 'Matig';
+  if (kmh < 50) return 'Vrij krachtig';
+  if (kmh < 62) return 'Krachtig';
+  return 'Storm';
+}
+
+async function fetchWeer(nextMatch) {
+  if (!nextMatch) return;
+
+  const matchDate = new Date(nextMatch.date);
+  const now = new Date();
+  // Alleen tonen als wedstrijd binnen 7 dagen
+  const diffMs = matchDate - now;
+  if (diffMs < 0 || diffMs > 7 * 24 * 3600 * 1000) return;
+
+  const thuisClub = nextMatch.home;
+  let coords = CLUB_COORDS[thuisClub];
+  
+  // Fallback: geocode via Open-Meteo als club niet in lijst
+  if (!coords) {
+    try {
+      const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(thuisClub)}&count=1&language=nl&format=json`);
+      const gd = await geo.json();
+      if (gd.results?.[0]) {
+        coords = { lat: gd.results[0].latitude, lng: gd.results[0].longitude, naam: gd.results[0].name };
+      }
+    } catch(e) {}
+  }
+  if (!coords) return;
+
+  // Haal uurlijkse forecast op: 2u voor KO t/m 2u na KO = 5 uur
+  const dateStr = matchDate.toISOString().slice(0, 10);
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lng}` +
+    `&hourly=temperature_2m,precipitation,windspeed_10m,weathercode` +
+    `&windspeed_unit=kmh&timezone=Europe%2FAmsterdam` +
+    `&start_date=${dateStr}&end_date=${dateStr}&models=knmi_seamless`;
+
+  let wd;
+  try {
+    const res = await fetch(url);
+    wd = await res.json();
+  } catch(e) { return; }
+
+  const times  = wd.hourly?.time || [];
+  const temps  = wd.hourly?.temperature_2m || [];
+  const precip = wd.hourly?.precipitation || [];
+  const wind   = wd.hourly?.windspeed_10m || [];
+  const codes  = wd.hourly?.weathercode || [];
+
+  // Kickoff uur
+  const koHour = matchDate.getHours();
+  // Toon: koHour-1, koHour (KO), koHour+1, koHour+2 (eindsignaal ~koHour+2)
+  const showHours = [koHour - 1, koHour, koHour + 1, koHour + 2].filter(h => h >= 0 && h <= 23);
+
+  const uurBlokken = showHours.map(h => {
+    const idx = times.findIndex(t => parseInt(t.slice(11, 13)) === h);
+    if (idx < 0) return null;
+    const emoji = WMO[codes[idx]] || '🌡️';
+    const label = h === koHour ? 'Aftrap' : h === koHour + 2 ? 'Einde' : `${String(h).padStart(2,'0')}:00`;
+    const isKO  = h === koHour;
+    return { h, emoji, temp: temps[idx], prec: precip[idx], wind: wind[idx], code: codes[idx], label, isKO };
+  }).filter(Boolean);
+
+  if (!uurBlokken.length) return;
+
+  // Dominante conditie = uur van aftrap
+  const ko = uurBlokken.find(b => b.isKO) || uurBlokken[0];
+
+  // Render
+  const box = document.getElementById('weer-box');
+  document.getElementById('weer-locatie').textContent = coords.naam;
+  document.getElementById('weer-icon').textContent = WMO[ko.code] || '🌡️';
+
+  const uren = document.getElementById('weer-uren');
+  uren.innerHTML = uurBlokken.map(b => `
+    <div style="flex:1;min-width:72px;padding:12px 10px;text-align:center;
+      background:${b.isKO ? 'rgba(249,115,22,0.1)' : 'transparent'};
+      border-right:1px solid rgba(255,255,255,0.05);
+      border-top:${b.isKO ? '2px solid var(--accent)' : '2px solid transparent'}">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;
+        color:${b.isKO ? 'var(--accent)' : 'var(--muted)'};font-weight:600;margin-bottom:6px">${b.label}</div>
+      <div style="font-size:26px;margin-bottom:4px">${b.emoji}</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text);font-family:'Barlow Condensed',sans-serif">${Math.round(b.temp)}°</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">
+        ${b.prec > 0 ? `<span style="color:#60a5fa">💧${b.prec}mm</span>` : '<span style="color:var(--green)">Droog</span>'}
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">💨 ${Math.round(b.wind)} km/h</div>
+    </div>`).join('');
+
+  box.style.display = 'block';
+}
+
 // ── NAVIGATIE ──
 const sections = {
   overzicht:'sec-overzicht', wedstrijden:'sec-wedstrijden',
   stand:'sec-stand', vorm:'sec-vorm', prognose:'sec-prognose',
-  topscorers:'sec-topscorers', club:'sec-club'
+  topscorers:'sec-topscorers', club:'sec-club', selectie:'sec-selectie'
 };
 
 function switchTab(name) {
