@@ -326,6 +326,20 @@
     <div style="font-size:12px;color:var(--muted)" id="countdown-loc">—</div>
   </div>
 
+  <!-- REISINFO (alleen bij uitwedstrijd) -->
+  <div id="reis-box" style="display:none;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;margin-bottom:12px;">
+    <div style="background:rgba(255,255,255,0.04);padding:12px 16px;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:600">Reisinfo uitwedstrijd</div>
+      <div style="font-size:14px;color:var(--text);margin-top:3px" id="reis-park">—</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:1px" id="reis-adres">—</div>
+    </div>
+    <div style="display:flex;gap:1px;background:var(--border)">
+      <a id="reis-route" href="#" target="_blank" rel="noopener"
+         style="flex:1;background:var(--surface);padding:11px;text-align:center;font-size:12px;color:var(--accent);text-decoration:none">🧭 Route</a>
+      <button id="reis-kopieer" type="button"
+         style="flex:1;background:var(--surface);padding:11px;text-align:center;font-size:12px;color:var(--muted);border:none;cursor:pointer;font-family:inherit">📋 Kopieer adres</button>
+    </div>
+  </div>
 
   <!-- WEER WEDSTRIJD -->
   <div id="weer-box" style="display:none;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;margin-bottom:12px;">
@@ -348,16 +362,32 @@
   <!-- NIEUWS BANNER -->
   <div id="nieuws-banner" style="display:none;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:11px 14px;margin-bottom:12px;font-size:12px;color:var(--green);line-height:1.5"></div>
 
+  <!-- TEGENSTANDER-SCAN -->
+  <div class="sec-label">Volgende tegenstander</div>
+  <div class="card" id="scan-box">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+
   <div class="sec-label">Wedstrijdschema</div>
   <div class="card">
     <div id="ov-programma"><div class="loading"><div class="spinner"></div></div></div>
-    <div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:center">Volledig schema → tab Wedstrijden</div>
+    <button id="ics-knop" type="button"
+      style="width:100%;margin-top:10px;padding:10px;background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.3);border-radius:8px;color:var(--accent);font-size:12px;font-family:inherit;cursor:pointer">
+      📅 Zet alle wedstrijden in je agenda
+    </button>
+    <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center">Volledig schema → tab Wedstrijden</div>
   </div>
 
   <div class="sec-label">Recente vorm ZCFC (laatste 4)</div>
   <div class="card">
     <div style="display:flex;gap:10px;margin-bottom:12px" id="ov-vorm-dots"><div class="loading"><div class="spinner"></div></div></div>
     <div id="ov-recent"></div>
+  </div>
+
+  <!-- PERIODESTAND & NACOMPETITIE -->
+  <div class="sec-label">Periodestand & nacompetitie</div>
+  <div class="card" id="periode-box">
+    <div class="loading"><div class="spinner"></div></div>
   </div>
 
   <div class="sec-label">Stand rondom ZCFC</div>
@@ -385,6 +415,9 @@
 
   <div class="sec-label">Periode 2</div>
   <div class="card"><table class="stand-table" id="period2-stand"><tbody><tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div>
+
+  <div class="sec-label">Periode 3</div>
+  <div class="card"><table class="stand-table" id="period3-stand"><tbody><tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div>
 </section>
 
 <!-- VORM -->
@@ -721,6 +754,7 @@ function renderAll(comp) {
   renderStand(table, zcfcRow, zcfcResults, clubInfo);
   renderPeriod(data.period1 || [], 'period1-stand');
   renderPeriod(data.period2 || [], 'period2-stand');
+  renderPeriod(data.period3 || [], 'period3-stand');
 
   // ── MATCHES ──
   renderMatches(zcfcResults);
@@ -728,6 +762,10 @@ function renderAll(comp) {
   // ── OVERZICHT ──
   renderOverzicht(zcfcResults, zcfcProgram, table, zcfcRow);
   renderNieuws(zcfcResults, results);
+  renderScan(zcfcProgram[0] || null, table, results);
+  renderPeriodeKans(data);
+  renderReisinfo(zcfcProgram[0] || null);
+  koppelAgendaKnop(zcfcProgram);
 
   // Countdown op eerste komende ZCFC wedstrijd
   startCountdown(zcfcProgram[0] || null);
@@ -957,6 +995,210 @@ function renderOverzicht(zcfcResults, zcfcProgram, table, zcfcRow) {
   }
 }
 
+// ── REISINFO UITWEDSTRIJD ──
+function renderReisinfo(nextMatch) {
+  const box = document.getElementById('reis-box');
+  const loc = nextMatch ? CLUB_COORDS[nextMatch.home] : null;
+  // Alleen tonen bij een uitwedstrijd waarvan we het adres kennen
+  if (!nextMatch || nextMatch.home === ZCFC || !loc || !loc.adres) {
+    box.style.display = 'none';
+    return;
+  }
+
+  document.getElementById('reis-park').textContent = `${loc.naam} · ${nextMatch.home}`;
+  document.getElementById('reis-adres').textContent = loc.adres;
+  document.getElementById('reis-route').href =
+    `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(loc.adres)}`;
+
+  const knop = document.getElementById('reis-kopieer');
+  knop.onclick = () => {
+    navigator.clipboard.writeText(loc.adres).then(() => {
+      knop.textContent = '✅ Gekopieerd';
+      setTimeout(() => { knop.textContent = '📋 Kopieer adres'; }, 2000);
+    }).catch(() => {});
+  };
+
+  box.style.display = 'block';
+}
+
+// ── TEGENSTANDER-SCAN ──
+function renderScan(nextMatch, table, allResults) {
+  const box = document.getElementById('scan-box');
+  if (!nextMatch) {
+    box.innerHTML = '<div style="color:var(--muted);font-size:12px">Geen volgende wedstrijd bekend.</div>';
+    return;
+  }
+
+  const thuis = nextMatch.home === ZCFC;
+  const opp   = thuis ? nextMatch.away : nextMatch.home;
+  const rij   = table.find(t => t.name === opp) || {};
+  const info  = clubInfo[opp] || {};
+
+  const duels = allResults
+    .filter(m => (m.home === opp || m.away === opp) && m.status === 'Uitgespeeld')
+    .sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  // Wij spelen uit → hun thuiscijfers zijn relevant, en andersom
+  const relevant = duels.filter(m => thuis ? m.away === opp : m.home === opp);
+  const tel = r => relevant.filter(m => resultOf(m, opp) === r).length;
+
+  const onderling = allResults.filter(m => m.status === 'Uitgespeeld' &&
+    ((m.home === opp && m.away === ZCFC) || (m.home === ZCFC && m.away === opp)));
+
+  const logoHtml = info.logo
+    ? `<img src="${info.logo}" style="width:36px;height:36px;object-fit:contain;flex-shrink:0" onerror="this.src='${info.shirt||''}';this.onerror=function(){this.style.display='none'}">`
+    : info.shirt
+    ? `<img src="${info.shirt}" style="width:36px;height:36px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`
+    : '';
+
+  const cel = (lbl, val, kleur) => `
+    <div style="flex:1;text-align:center">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;line-height:1;color:${kleur||'var(--text)'}">${val}</div>
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-top:3px">${lbl}</div>
+    </div>`;
+
+  let cijfers, extra;
+  if (!duels.length) {
+    cijfers = `<div style="font-size:12px;color:var(--muted);padding:4px 0">
+      Nog geen wedstrijden gespeeld dit seizoen — nog geen cijfers om op te scouten.</div>`;
+    extra = '';
+  } else {
+    const ds = (rij.goalsFor || 0) - (rij.goalsAgainst || 0);
+    cijfers = `<div style="display:flex;gap:6px;padding:10px 0;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06)">
+      ${cel('Positie', rij.position ? rij.position + 'e' : '—', 'var(--accent)')}
+      ${cel('Punten', rij.points ?? '—')}
+      ${cel('Gespeeld', rij.matches ?? '—')}
+      ${cel('Doelsaldo', (ds >= 0 ? '+' : '') + ds)}
+    </div>`;
+
+    const vorm = duels.slice(-5).map(m => resultOf(m, opp));
+    const vormHtml = vorm.map(r =>
+      `<span class="badge ${bCls[r]}" style="width:22px;height:22px;font-size:10px">${r}</span>`).join('');
+
+    extra = `
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--muted)">
+        <span style="min-width:104px">Vorm (laatste 5)</span>
+        <div style="display:flex;gap:4px">${vormHtml}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:7px;font-size:11px;color:var(--muted)">
+        <span style="min-width:104px">${thuis ? 'Hun uitduels' : 'Hun thuisduels'}</span>
+        <span style="color:var(--text)">${tel('W')}× winst · ${tel('G')}× gelijk · ${tel('V')}× verlies</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:7px;font-size:11px;color:var(--muted)">
+        <span style="min-width:104px">Onderling</span>
+        <span style="color:var(--text)">${onderling.length
+          ? onderling.map(m => `${m.home} ${m.homeGoals}–${m.awayGoals} ${m.away}`).join(' · ')
+          : 'dit seizoen nog niet gespeeld'}</span>
+      </div>`;
+  }
+
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px">
+      ${logoHtml}
+      <div style="min-width:0">
+        <div style="font-size:15px;font-weight:600">${opp}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px">
+          ${thuis ? 'Thuis' : 'Uit'} · ${fmtDateFull(nextMatch.date)} · ${fmtTime(nextMatch.date)}
+        </div>
+      </div>
+    </div>
+    ${cijfers}
+    ${extra}`;
+}
+
+// ── PERIODESTAND & NACOMPETITIEKANS ──
+function renderPeriodeKans(data) {
+  const box = document.getElementById('periode-box');
+  const periodes = [data.period1, data.period2, data.period3, data.period4]
+    .map((rijen, i) => ({ nr: i + 1, rijen: rijen || [] }))
+    .filter(p => p.rijen.length);
+
+  if (!periodes.length) {
+    box.innerHTML = '<div style="color:var(--muted);font-size:12px">Nog geen periodestanden bekend.</div>';
+    return;
+  }
+
+  // Actieve periode = de laatste waarin al gespeeld is; anders de eerste
+  const metDuels = periodes.filter(p => p.rijen.some(r => (r.matches || 0) > 0));
+  const actief = metDuels.length ? metDuels[metDuels.length - 1] : periodes[0];
+
+  const blokken = periodes.map(p => {
+    const zcfc   = p.rijen.find(r => r.name === ZCFC) || {};
+    const leider = p.rijen.find(r => r.position === 1) || p.rijen[0] || {};
+    const isActief = p.nr === actief.nr;
+    const gespeeld = p.rijen.some(r => (r.matches || 0) > 0);
+    const achter = (leider.points || 0) - (zcfc.points || 0);
+
+    const status = !gespeeld
+      ? '<span style="color:var(--muted)">nog niet begonnen</span>'
+      : zcfc.position === 1
+      ? '<span style="color:var(--green)">ZCFC staat eerste</span>'
+      : `<span style="color:var(--text)">${achter} pt achter ${leider.name}</span>`;
+
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;min-width:74px;
+                     color:${isActief ? 'var(--accent)' : 'var(--muted)'};font-weight:${isActief ? '600' : '400'}">
+          Periode ${p.nr}${isActief ? ' •' : ''}
+        </span>
+        <span style="font-family:'DM Mono',monospace;font-size:12px;min-width:52px">
+          ${gespeeld ? (zcfc.position ? zcfc.position + 'e' : '—') : '—'}
+        </span>
+        <span style="font-family:'DM Mono',monospace;font-size:12px;min-width:40px;color:var(--muted)">
+          ${gespeeld ? (zcfc.points ?? 0) + 'pt' : ''}
+        </span>
+        <span style="font-size:11px;flex:1;text-align:right">${status}</span>
+      </div>`;
+  }).join('');
+
+  box.innerHTML = blokken + `
+    <div style="font-size:10px;color:var(--muted);margin-top:9px;line-height:1.5">
+      Wie een periode wint, plaatst zich voor de nacompetitie om promotie naar de 4e klasse.
+      • = periode die nu loopt.
+    </div>`;
+}
+
+// ── AGENDA (.ics) ──
+function icsStempel(d) {
+  return new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+function icsTekst(s) {
+  return String(s || '').replace(/([\\;,])/g, '\\$1').replace(/\n/g, '\\n');
+}
+
+function koppelAgendaKnop(programma) {
+  const knop = document.getElementById('ics-knop');
+  if (!knop) return;
+  if (!programma.length) { knop.style.display = 'none'; return; }
+
+  knop.onclick = () => {
+    const regels = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ZCFC Nieuwsfeed//NL', 'CALSCALE:GREGORIAN'];
+    programma.forEach(m => {
+      const loc   = CLUB_COORDS[m.home] || {};
+      const start = new Date(m.date);
+      const eind  = new Date(start.getTime() + 2 * 3600 * 1000);
+      regels.push(
+        'BEGIN:VEVENT',
+        `UID:${icsStempel(m.date)}-${m.home}-${m.away}@zcfc-feed`.replace(/\s/g, ''),
+        `DTSTAMP:${icsStempel(new Date())}`,
+        `DTSTART:${icsStempel(start)}`,
+        `DTEND:${icsStempel(eind)}`,
+        `SUMMARY:${icsTekst(m.home + ' - ' + m.away)}`,
+        `LOCATION:${icsTekst([loc.naam, loc.adres].filter(Boolean).join(', '))}`,
+        `DESCRIPTION:${icsTekst((m.home === ZCFC ? 'Thuiswedstrijd' : 'Uitwedstrijd') + ' ZCFC')}`,
+        'END:VEVENT');
+    });
+    regels.push('END:VCALENDAR');
+
+    const url = URL.createObjectURL(new Blob([regels.join('\r\n')], { type: 'text/calendar;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'zcfc-wedstrijden.ics';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+}
+
 function getFormForTeam(teamName, results) {
   const teamMatches = results
     .filter(m => (m.home === teamName || m.away === teamName) && m.status === 'Uitgespeeld')
@@ -1184,7 +1426,7 @@ function startCountdown(nextMatch) {
   document.getElementById('countdown-match').textContent =
     isHome ? `ZCFC vs ${opp}` : `${opp} vs ZCFC`;
   document.getElementById('countdown-loc').textContent =
-    isHome ? '🏟 Thuis · Sportpark Kalverhoek' : `🏟 Uit · ${fmtDateFull(nextMatch.date)} · ${fmtTime(nextMatch.date)}`;
+    `🏟 ${isHome ? 'Thuis' : 'Uit'} · ${fmtDateFull(nextMatch.date)} · ${fmtTime(nextMatch.date)}`;
 
   if (countdownInterval) clearInterval(countdownInterval);
 
@@ -1616,19 +1858,23 @@ loadSelectie().then(spelers => {
 
 
 // ── WEER ──
-// Coördinaten van thuisparken alle poule-clubs (lat, lng)
+// Thuisparken van de poule-clubs: coördinaten (weer) + adres (reisinfo/agenda).
+// Adressen opgehaald bij HollandseVelden, coördinaten via OpenStreetMap.
 const CLUB_COORDS = {
-  'ZCFC':               { lat: 52.4777, lng: 4.8720, naam: 'Sportpark Kalverhoek, Zaandam' },
-  'AFC IJburg':         { lat: 52.3532, lng: 5.0003, naam: 'Sportpark IJburg, Amsterdam' },
-  'ASC De Volewijckers':{ lat: 52.4021, lng: 4.9478, naam: 'Sportpark de Toekomst Noord, Amsterdam' },
-  'VV Opperdoes':       { lat: 52.7497, lng: 5.0722, naam: 'Sportpark Opperdoes' },
-  'De Blokkers':        { lat: 52.6482, lng: 5.1203, naam: 'Sportpark De Blokkers, Blokker' },
-  'Wieringermeer':      { lat: 52.8193, lng: 4.9908, naam: 'Sportpark Slootdorp' },
-  'Sporting Krommenie': { lat: 52.4881, lng: 4.7637, naam: 'Sportpark Krommenie' },
-  'SC Purmerland':      { lat: 52.4868, lng: 4.9613, naam: 'Sportpark Purmerland' },
-  'SV Koedijk':         { lat: 52.6491, lng: 4.7602, naam: 'Sportpark Koedijk' },
-  'Alcmaria Victrix':   { lat: 52.6274, lng: 4.7437, naam: 'Sportpark Alkmaar' },
-  'SV DTS':             { lat: 52.6844, lng: 5.0213, naam: 'Sportpark Oud Karspel' },
+  'ASC SDW':                 { lat: 52.3863377, lng: 4.8297927, naam: 'Sportpark Spieringhorn', adres: 'Sportpark Spieringhorn 11, 1043 AA Amsterdam' },
+  'Atletico Club Amsterdam': { lat: 52.3792899, lng: 4.7836622, naam: 'Sportpark De Eendracht', adres: 'Bok de Korverweg 12, 1067 HR Amsterdam' },
+  'DRC':                     { lat: 52.3783401, lng: 4.9881528, naam: 'Sportpark Durgerdam', adres: 'Durgerdammerdijk 76, 1026 CB Amsterdam' },
+  'De Blokkers':             { lat: 52.6604987, lng: 5.1025081, naam: 'Sportpark de Blokkers', adres: 'Gildenweg 23a, 1695 GD Blokker' },
+  'OSV':                     { lat: 52.4214328, lng: 4.8793627, naam: 'Sportpark Oostzanerwerf', adres: 'Sportpark Oostzanerwerf 2, 1035 EW Amsterdam' },
+  'SC Purmerland':           { lat: 52.4790492, lng: 4.9242916, naam: 'Gem Sportpark Purmerland', adres: 'Purmerland 75, 1451 MG Purmerland' },
+  'SV DTS':                  { lat: 52.6844,    lng: 5.0213,    naam: 'Sportpark Sint Maarten', adres: 'Oeverzegge 1, 1724 TZ Oud-Karspel' },
+  'SV Kadoelen':             { lat: 52.4149091, lng: 4.9078978, naam: 'Sportpark Kadoelen', adres: 'Kadoelenpad, Amsterdam' },
+  'SV Koedijk':              { lat: 52.66834,   lng: 4.7538964, naam: 'Sportpark De Weijdt', adres: 'Saskerstraat 164, 1831 CP Koedijk' },
+  'SV Nieuw-West United':    { lat: 52.3800992, lng: 4.7837393, naam: 'Sportpark De Eendracht', adres: 'Bok de Korverweg 14, 1067 HR Amsterdam' },
+  'VV Westzaan':             { lat: 52.4361638, lng: 4.7800782, naam: 'Sportpark Zuideinde', adres: 'Zuideinde 150, 1551 EM Westzaan' },
+  'VVA/Spartaan':            { lat: 52.3738134, lng: 4.8388301, naam: 'Sportpark Laan van Spartaan', adres: 'Laan van Spartaan 1, 1062 BK Amsterdam' },
+  'Wieringermeer':           { lat: 52.8457447, lng: 4.9688347, naam: 'Sportpark Belboei', adres: 'Emmahoeve 2, 1774 BL Slootdorp' },
+  'ZCFC':                    { lat: 52.4777,    lng: 4.8720,    naam: 'Sportpark Kalverhoek', adres: 'Zuiderweg, 1456 NH Zaandam' },
 };
 
 const WMO = {
