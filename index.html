@@ -723,11 +723,12 @@ function fmtTime(dateStr) {
 }
 
 // ── RENDER ──
-function renderAll(comp) {
+function renderAll(comp, team) {
   const data      = comp.competition;
   const table     = data.leaguetable || [];
   const results   = data.results     || [];
   const program   = data.program     || [];
+  team = team || { training: [], programma: [] };
 
   // Tijdstempel
   const now = new Date();
@@ -748,8 +749,12 @@ function renderAll(comp) {
   const zcfcResults = results.filter(m => m.home === ZCFC || m.away === ZCFC)
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
-  // ZCFC programma (nog te spelen)
-  const zcfcProgram = program.filter(m => m.home === ZCFC || m.away === ZCFC)
+  // ZCFC programma (nog te spelen) — competitie én, van de clubsite,
+  // de beker- en oefenduels die niet in de competitiefeed zitten
+  const competitieProgram = program.filter(m => m.home === ZCFC || m.away === ZCFC)
+    .sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  const zcfcProgram = [...extraDuels(team, competitieProgram), ...competitieProgram]
     .sort((a,b) => new Date(a.date) - new Date(b.date));
 
   const related = data.links?.related || [];
@@ -967,7 +972,7 @@ function renderOverzicht(zcfcResults, zcfcProgram, table, zcfcRow) {
       d.className = 'match-row';
       d.innerHTML = `
         <div class="match-info">
-          <div class="match-opp">${isHome?'':'@ '}${opp}</div>
+          <div class="match-opp">${isHome?'':'@ '}${opp}${m.extra ? BEKER_LABEL : ''}</div>
           <div class="match-meta">${fmtDate(m.date)} · ${isHome?'Thuis':'Uit'}</div>
         </div>
         <div class="match-right">
@@ -1014,19 +1019,69 @@ function renderOverzicht(zcfcResults, zcfcProgram, table, zcfcRow) {
   }
 }
 
-// ── TRAININGSTIJDEN (van zcfc.nl, via de worker) ──
-async function renderTraining() {
-  const box = document.getElementById('training-box');
-  let data;
-  try {
-    const res = await fetch(`${WORKER}/team`);
-    data = await res.json();
-  } catch (e) {
-    box.innerHTML = '<div style="color:var(--muted);font-size:12px">Trainingstijden niet op te halen.</div>';
-    return;
-  }
+// Markering voor duels die niet in de competitie meetellen
+const BEKER_LABEL = ` <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.06em;
+  color:var(--blue);border:1px solid var(--blue);border-radius:4px;padding:1px 4px;
+  vertical-align:middle;margin-left:4px">beker/oefen</span>`;
 
-  const rijen = data.training || [];
+// ── ZCFC.NL: DATUMS EN WEDSTRIJDEN ONTLEDEN ──
+const MAANDEN = { jan:0, feb:1, mrt:2, apr:3, mei:4, jun:5, jul:6, aug:7, sep:8, okt:9, nov:10, dec:11 };
+
+// "29 aug. 14:30" → Date. De clubsite noemt geen jaar; het programma toont
+// alleen komende duels, dus een datum die al voorbij is hoort bij volgend jaar.
+function parseZcfcDatum(tekst) {
+  const m = String(tekst).match(/^(\d{1,2})\s+([a-z]{3})\.?\s+(\d{1,2}):(\d{2})$/i);
+  if (!m) return null;
+  const maand = MAANDEN[m[2].toLowerCase()];
+  if (maand === undefined) return null;
+
+  const nu = new Date();
+  let d = new Date(nu.getFullYear(), maand, +m[1], +m[3], +m[4]);
+  if (d.getTime() < nu.getTime() - 24 * 3600 * 1000) {
+    d = new Date(nu.getFullYear() + 1, maand, +m[1], +m[3], +m[4]);
+  }
+  return d;
+}
+
+// "Sporting Adrichem 1 - ZCFC 1" → { thuis: false, tegenstander: 'Sporting Adrichem' }
+function ontleedWedstrijd(tekst) {
+  const delen = String(tekst).split(/\s+-\s+/);
+  if (delen.length !== 2) return null;
+  const schoon = s => s.replace(/\s+\d+$/, '').trim();
+  const thuisIsZcfc = /^ZCFC\b/i.test(delen[0].trim());
+  return { thuis: thuisIsZcfc, tegenstander: schoon(thuisIsZcfc ? delen[1] : delen[0]) };
+}
+
+// Duels op de clubsite die niet op een competitiespeeldag vallen: beker/oefen.
+// Ze krijgen dezelfde vorm als competitieduels, zodat alle bestaande
+// onderdelen (aftelling, schema, reisinfo, agenda) er mee overweg kunnen.
+function extraDuels(team, zcfcProgram) {
+  const competitieDagen = new Set(zcfcProgram.map(m => new Date(m.date).toDateString()));
+  const grens = Date.now() - 3 * 3600 * 1000;
+
+  return (team.programma || []).map(p => {
+    const datum = parseZcfcDatum(p.datum);
+    const w = ontleedWedstrijd(p.wedstrijd);
+    if (!datum || !w) return null;
+    if (competitieDagen.has(datum.toDateString())) return null;   // staat al in de feed
+    if (datum.getTime() < grens) return null;
+
+    return {
+      date: datum.toISOString(),
+      home: w.thuis ? ZCFC : w.tegenstander,
+      away: w.thuis ? w.tegenstander : ZCFC,
+      homeGoals: 0, awayGoals: 0, result: '',
+      status: 'Nog te spelen/Open',
+      extra: true,
+      accommodatie: p.accommodatie || ''
+    };
+  }).filter(Boolean);
+}
+
+// ── TRAININGSTIJDEN (van zcfc.nl, via de worker) ──
+function renderTraining(data) {
+  const box = document.getElementById('training-box');
+  const rijen = (data && data.training) || [];
   if (!rijen.length) {
     box.innerHTML = '<div style="color:var(--muted);font-size:12px">Geen trainingstijden bekend op zcfc.nl.</div>';
     return;
@@ -1208,21 +1263,26 @@ function toonWatAlsStand(open, table, uitEl) {
 // ── REISINFO UITWEDSTRIJD ──
 function renderReisinfo(nextMatch) {
   const box = document.getElementById('reis-box');
-  const loc = nextMatch ? CLUB_COORDS[nextMatch.home] : null;
-  // Alleen tonen bij een uitwedstrijd waarvan we het adres kennen
-  if (!nextMatch || nextMatch.home === ZCFC || !loc || !loc.adres) {
-    box.style.display = 'none';
-    return;
-  }
+  if (!nextMatch || nextMatch.home === ZCFC) { box.style.display = 'none'; return; }
 
-  document.getElementById('reis-park').textContent = `${loc.naam} · ${nextMatch.home}`;
-  document.getElementById('reis-adres').textContent = loc.adres;
-  document.getElementById('reis-route').href =
-    `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(loc.adres)}`;
+  const loc = CLUB_COORDS[nextMatch.home];
+  // Poule-clubs hebben een volledig adres. Bij beker- en oefenduels kennen we
+  // alleen de naam van het sportpark; dan zoeken we die op de kaart op.
+  const park  = loc ? loc.naam  : (nextMatch.accommodatie || '');
+  const adres = loc ? loc.adres : '';
+  if (!park && !adres) { box.style.display = 'none'; return; }
+
+  const bestemming = adres || park;
+  document.getElementById('reis-park').textContent = `${park} · ${nextMatch.home}`;
+  document.getElementById('reis-adres').textContent =
+    adres || 'Adres onbekend — de kaart zoekt op de naam van het sportpark';
+  document.getElementById('reis-route').href = adres
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(adres)}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(park)}`;
 
   const knop = document.getElementById('reis-kopieer');
   knop.onclick = () => {
-    navigator.clipboard.writeText(loc.adres).then(() => {
+    navigator.clipboard.writeText(bestemming).then(() => {
       knop.textContent = '✅ Gekopieerd';
       setTimeout(() => { knop.textContent = '📋 Kopieer adres'; }, 2000);
     }).catch(() => {});
@@ -1268,7 +1328,14 @@ function renderScan(nextMatch, table, allResults) {
     </div>`;
 
   let cijfers, extra;
-  if (!duels.length) {
+  if (nextMatch.extra) {
+    // Beker- of oefenduel: tegenstander speelt in een andere poule, dus de
+    // competitiecijfers van deze klasse zeggen niets over hen.
+    cijfers = `<div style="font-size:12px;color:var(--muted);padding:4px 0;line-height:1.6">
+      Beker- of oefenwedstrijd. ${opp} speelt niet in deze poule, dus er zijn hier
+      geen competitiecijfers van beschikbaar.</div>`;
+    extra = '';
+  } else if (!duels.length) {
     cijfers = `<div style="font-size:12px;color:var(--muted);padding:4px 0">
       Nog geen wedstrijden gespeeld dit seizoen — nog geen cijfers om op te scouten.</div>`;
     extra = '';
@@ -1306,7 +1373,7 @@ function renderScan(nextMatch, table, allResults) {
     <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px">
       ${logoHtml}
       <div style="min-width:0">
-        <div style="font-size:15px;font-weight:600">${opp}</div>
+        <div style="font-size:15px;font-weight:600">${opp}${nextMatch.extra ? BEKER_LABEL : ''}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:1px">
           ${thuis ? 'Thuis' : 'Uit'} · ${fmtDateFull(nextMatch.date)} · ${fmtTime(nextMatch.date)}
         </div>
@@ -1384,7 +1451,7 @@ function koppelAgendaKnop(programma) {
   knop.onclick = () => {
     const regels = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ZCFC Nieuwsfeed//NL', 'CALSCALE:GREGORIAN'];
     programma.forEach(m => {
-      const loc   = CLUB_COORDS[m.home] || {};
+      const loc   = CLUB_COORDS[m.home] || null;
       const start = new Date(m.date);
       const eind  = new Date(start.getTime() + 2 * 3600 * 1000);
       regels.push(
@@ -1393,9 +1460,11 @@ function koppelAgendaKnop(programma) {
         `DTSTAMP:${icsStempel(new Date())}`,
         `DTSTART:${icsStempel(start)}`,
         `DTEND:${icsStempel(eind)}`,
-        `SUMMARY:${icsTekst(m.home + ' - ' + m.away)}`,
-        `LOCATION:${icsTekst([loc.naam, loc.adres].filter(Boolean).join(', '))}`,
-        `DESCRIPTION:${icsTekst((m.home === ZCFC ? 'Thuiswedstrijd' : 'Uitwedstrijd') + ' ZCFC')}`,
+        `SUMMARY:${icsTekst(m.home + ' - ' + m.away + (m.extra ? ' (beker/oefen)' : ''))}`,
+        `LOCATION:${icsTekst(loc ? [loc.naam, loc.adres].filter(Boolean).join(', ')
+                                 : (m.accommodatie || ''))}`,
+        `DESCRIPTION:${icsTekst((m.home === ZCFC ? 'Thuiswedstrijd' : 'Uitwedstrijd') + ' ZCFC'
+                                + (m.extra ? ' — beker of oefenwedstrijd, telt niet mee in de competitie' : ''))}`,
         'END:VEVENT');
     });
     regels.push('END:VCALENDAR');
@@ -2245,11 +2314,17 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── START ──
-// Losstaand van de competitiedata, zodat het ook laadt als die feed hapert
-renderTraining();
+// Clubsite-gegevens (training + beker/oefenduels). Faalt die, dan draait de
+// rest gewoon door op de competitiefeed alleen.
+const teamBelofte = fetch(`${WORKER}/team`)
+  .then(r => r.json())
+  .catch(() => ({ training: [], programma: [] }));
 
-fetchData()
-  .then(data => renderAll(data))
+// Trainingstijden staan los van de competitiefeed en renderen meteen
+teamBelofte.then(renderTraining);
+
+Promise.all([fetchData(), teamBelofte])
+  .then(([data, team]) => renderAll(data, team))
   .catch(err => showError('Data kon niet worden opgehaald. Controleer je verbinding en probeer het opnieuw.'));
 </script>
 </body>
