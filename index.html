@@ -461,8 +461,13 @@
   <div id="prognose-container"><div class="loading"><div class="spinner"></div><span>Kansen berekenen…</span></div></div>
 
   <!-- WAT-ALS-SIMULATOR -->
-  <div class="sec-label">Wat als… — speeldag doorrekenen</div>
-  <div class="note-box">Tik op een uitslag om die vast te zetten. De stand hieronder rekent meteen mee.</div>
+  <div class="sec-label">Wat als… — zelf uitslagen invullen</div>
+  <div class="note-box">
+    Los van de berekening hierboven: tik zelf aan hoe je denkt dat de wedstrijden
+    aflopen, dan zie je meteen wat dat met de stand doet.
+    <span style="color:var(--muted)">Alleen voor jezelf — het verandert niets aan de site
+    en niemand anders ziet het.</span>
+  </div>
   <div class="card" id="watals-box"><div class="loading"><div class="spinner"></div></div></div>
   <div class="card" id="watals-stand" style="display:none"></div>
 </section>
@@ -1598,7 +1603,9 @@ function renderPrognose(table, results, program) {
   if (!gespeeldTotaal) {
     pc.innerHTML = `<div class="card" style="color:var(--muted);font-size:12px;line-height:1.6">
       Er is dit seizoen nog niet gespeeld, dus er valt nog niets te berekenen.
-      Zodra de eerste speelronden erop zitten, verschijnen hier de kansen per wedstrijd.</div>`;
+      <strong style="color:var(--text)">Dit vult zichzelf</strong>: zodra de eerste
+      wedstrijden gespeeld zijn, verschijnt hier per wedstrijd de kans op winst,
+      gelijkspel en verlies, plus de verwachte uitslag. Je hoeft zelf niets in te vullen.</div>`;
     return;
   }
 
