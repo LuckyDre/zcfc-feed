@@ -19,7 +19,6 @@ Bijgewerkt 22-08-2026.
 
 | # | Idee | Voor wie | Aantekening |
 |---|---|---|---|
-| 3 | Wedstrijdfoto's koppelen aan zaanslicht.com | toeschouwers | Onderscheidend; vraagt eerst uitzoekwerk in het fotografie-project — apart houden van dit project |
 | 2 | Zaterdagoverzicht van de hele poule | toeschouwers | Data zit al in de feed, alleen tonen |
 | 7 | Kaarten & schorsingen bijhouden | trainers/spelers | Vraagt invoerscherm; patroon van `/scorers` in de worker hergebruiken |
 | 4 | Man of the Match-stemming | toeschouwers | Idem: nieuwe KV-sleutel + endpoint |
@@ -28,6 +27,10 @@ Bijgewerkt 22-08-2026.
 | 8 | Trainingstijden & veldindeling van zcfc.nl | spelers | Ophalen met ruwe curl, niet met een samenvatter |
 
 ## Vervallen
+
+**3 — Wedstrijdfoto's koppelen aan zaanslicht.com.** Op verzoek van Andreas
+geschrapt (22-08-2026): foto's live zetten is nooit leuk. Niet opnieuw
+voorstellen.
 
 **12 — Alle ZCFC-teams (2, 3, jeugd).** Kan niet via HollandseVelden: die heeft
 alleen standaardteams (eerste elftallen), in geen enkel district reserve- of
