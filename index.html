@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ZCFC Nieuwsfeed — 5e klasse A West 1</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f97316">
+<link rel="apple-touch-icon" href="icoon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -399,6 +402,11 @@
 
 <!-- WEDSTRIJDEN -->
 <section class="section" id="sec-wedstrijden">
+  <div class="sec-label" id="speeldag-label">Deze speeldag — hele poule</div>
+  <div class="card" style="padding:0 14px">
+    <div id="speeldag-lijst"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
   <div class="sec-label">Gespeelde wedstrijden — ZCFC</div>
   <div class="note-box">Oranje = laatste 4 wedstrijden · Cumulatief puntentotaal rechts</div>
   <div class="card" style="padding:0 14px"><div id="all-matches"><div class="loading"><div class="spinner"></div><span>Wedstrijden laden…</span></div></div></div>
@@ -448,6 +456,12 @@
     <span style="color:var(--green)">Groen</span> = thuis · <span style="color:var(--orange)">Oranje</span> = gelijk · <span style="color:var(--red)">Rood</span> = uit
   </div>
   <div id="prognose-container"><div class="loading"><div class="spinner"></div><span>Kansen berekenen…</span></div></div>
+
+  <!-- WAT-ALS-SIMULATOR -->
+  <div class="sec-label">Wat als… — speeldag doorrekenen</div>
+  <div class="note-box">Tik op een uitslag om die vast te zetten. De stand hieronder rekent meteen mee.</div>
+  <div class="card" id="watals-box"><div class="loading"><div class="spinner"></div></div></div>
+  <div class="card" id="watals-stand" style="display:none"></div>
 </section>
 
 <!-- CLUB -->
@@ -465,6 +479,9 @@
     <div class="info-row"><span class="info-key">Website</span><span class="info-val"><a href="https://zcfc.nl" style="color:var(--accent);text-decoration:none">zcfc.nl</a></span></div>
     <div class="info-row"><span class="info-key">HollandseVelden</span><span class="info-val"><a href="https://www.hollandsevelden.nl/clubs/z/zcfc/" target="_blank" style="color:var(--accent);text-decoration:none">Clubpagina →</a></span></div>
   </div>
+
+  <div class="sec-label" style="margin-top:4px">Trainingstijden ZCFC 1</div>
+  <div class="card" id="training-box"><div class="loading"><div class="spinner"></div></div></div>
 
   <div class="sec-label" style="margin-top:4px">Clubs in de poule</div>
   <div class="card" id="club-links-list">
@@ -766,6 +783,8 @@ function renderAll(comp) {
   renderPeriodeKans(data);
   renderReisinfo(zcfcProgram[0] || null);
   koppelAgendaKnop(zcfcProgram);
+  renderSpeeldag(results, program);
+  renderWatAls(results, program, table);
 
   // Countdown op eerste komende ZCFC wedstrijd
   startCountdown(zcfcProgram[0] || null);
@@ -993,6 +1012,197 @@ function renderOverzicht(zcfcResults, zcfcProgram, table, zcfcRow) {
       recentEl.appendChild(dr);
     });
   }
+}
+
+// ── TRAININGSTIJDEN (van zcfc.nl, via de worker) ──
+async function renderTraining() {
+  const box = document.getElementById('training-box');
+  let data;
+  try {
+    const res = await fetch(`${WORKER}/team`);
+    data = await res.json();
+  } catch (e) {
+    box.innerHTML = '<div style="color:var(--muted);font-size:12px">Trainingstijden niet op te halen.</div>';
+    return;
+  }
+
+  const rijen = data.training || [];
+  if (!rijen.length) {
+    box.innerHTML = '<div style="color:var(--muted);font-size:12px">Geen trainingstijden bekend op zcfc.nl.</div>';
+    return;
+  }
+
+  box.innerHTML = rijen.map(t => `
+    <div class="info-row">
+      <span class="info-key">${t.dag}</span>
+      <span class="info-val">${t.tijd}${t.veld ? ' · ' + t.veld : ''}</span>
+    </div>`).join('') + `
+    <div style="font-size:10px;color:var(--muted);margin-top:8px">
+      Bron: <a href="https://www.zcfc.nl/" target="_blank" style="color:var(--muted)">zcfc.nl</a>
+    </div>`;
+}
+
+// ── SPEELDAG (hele poule) ──
+// Bepaalt de eerstvolgende speeldag (of de laatst gespeelde) en alle duels
+// daaromheen. Een speelronde loopt soms over een weekend, vandaar ±1 dag.
+function speeldagDuels(results, program) {
+  const open = program.slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+  const gespeeld = results.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+  const doel = open.length ? new Date(open[0].date)
+             : gespeeld.length ? new Date(gespeeld[0].date) : null;
+  if (!doel) return { datum: null, duels: [], komend: true };
+
+  const dag = 24 * 3600 * 1000;
+  const duels = [...results, ...program]
+    .filter(m => Math.abs(new Date(m.date) - doel) <= dag)
+    .sort((a,b) => new Date(a.date) - new Date(b.date));
+  return { datum: doel, duels, komend: open.length > 0 };
+}
+
+function duelRegel(m) {
+  const gespeeld = m.status === 'Uitgespeeld';
+  const zcfc = m.home === ZCFC || m.away === ZCFC;
+  const logo = naam => {
+    const i = clubInfo[naam] || {};
+    return i.logo ? `<img src="${i.logo}" style="width:18px;height:18px;object-fit:contain;flex-shrink:0" onerror="this.src='${i.shirt||''}';this.onerror=function(){this.style.display='none'}">`
+         : i.shirt ? `<img src="${i.shirt}" style="width:18px;height:18px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">` : '';
+  };
+  const kleur = n => n === ZCFC ? 'color:var(--accent);font-weight:600' : '';
+  const midden = gespeeld
+    ? `<span style="font-family:'DM Mono',monospace;font-size:13px">${m.homeGoals}–${m.awayGoals}</span>`
+    : `<span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">${fmtTime(m.date)}</span>`;
+
+  const d = document.createElement('div');
+  d.className = 'match-row';
+  if (zcfc) d.style.background = 'rgba(249,115,22,0.05)';
+  d.innerHTML = `
+    <div style="flex:1;display:flex;align-items:center;gap:6px;justify-content:flex-end;min-width:0">
+      <span style="font-size:12px;${kleur(m.home)};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.home}</span>
+      ${logo(m.home)}
+    </div>
+    <div style="min-width:52px;text-align:center">${midden}</div>
+    <div style="flex:1;display:flex;align-items:center;gap:6px;min-width:0">
+      ${logo(m.away)}
+      <span style="font-size:12px;${kleur(m.away)};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.away}</span>
+    </div>`;
+  return d;
+}
+
+function renderSpeeldag(results, program) {
+  const el = document.getElementById('speeldag-lijst');
+  const { datum, duels, komend } = speeldagDuels(results, program);
+  el.innerHTML = '';
+  if (!duels.length) {
+    el.innerHTML = '<div class="loading"><span>Geen wedstrijden bekend</span></div>';
+    return;
+  }
+  document.getElementById('speeldag-label').textContent =
+    `${komend ? 'Komende' : 'Laatste'} speeldag — ${fmtDateFull(datum)}`;
+  duels.forEach(m => el.appendChild(duelRegel(m)));
+}
+
+// ── WAT-ALS-SIMULATOR ──
+const watAlsKeuzes = {};
+
+function renderWatAls(results, program, table) {
+  const box   = document.getElementById('watals-box');
+  const uitEl = document.getElementById('watals-stand');
+  const open  = speeldagDuels(results, program).duels.filter(m => m.status !== 'Uitgespeeld');
+
+  box.innerHTML = '';
+  if (!open.length) {
+    box.innerHTML = '<div style="color:var(--muted);font-size:12px">Geen wedstrijden om door te rekenen.</div>';
+    uitEl.style.display = 'none';
+    return;
+  }
+
+  open.forEach(m => {
+    const id = m.date + '|' + m.home + '|' + m.away;
+    const rij = document.createElement('div');
+    rij.style.cssText = 'padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04)';
+    rij.innerHTML = `<div style="font-size:12px;margin-bottom:6px;${m.home===ZCFC||m.away===ZCFC?'color:var(--accent)':''}">
+        ${m.home} – ${m.away}</div>`;
+
+    const knoppen = document.createElement('div');
+    knoppen.style.cssText = 'display:flex;gap:5px';
+    [['thuis', m.home + ' wint'], ['gelijk', 'Gelijk'], ['uit', m.away + ' wint']].forEach(([w, lbl]) => {
+      const k = document.createElement('button');
+      k.type = 'button';
+      k.textContent = lbl;
+      const aan = watAlsKeuzes[id] === w;
+      k.style.cssText = `flex:1;padding:6px 4px;font-size:10px;font-family:inherit;cursor:pointer;
+        border-radius:6px;border:1px solid ${aan ? 'var(--accent)' : 'rgba(255,255,255,0.1)'};
+        background:${aan ? 'rgba(249,115,22,0.15)' : 'transparent'};
+        color:${aan ? 'var(--accent)' : 'var(--muted)'};
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap`;
+      k.onclick = () => {
+        watAlsKeuzes[id] = watAlsKeuzes[id] === w ? undefined : w;
+        renderWatAls(results, program, table);
+      };
+      knoppen.appendChild(k);
+    });
+    rij.appendChild(knoppen);
+    box.appendChild(rij);
+  });
+
+  const gekozen = open.filter(m => watAlsKeuzes[m.date + '|' + m.home + '|' + m.away]);
+  const wis = document.createElement('button');
+  wis.type = 'button';
+  wis.textContent = '↺ Begin opnieuw';
+  wis.style.cssText = `width:100%;margin-top:10px;padding:8px;font-size:11px;font-family:inherit;
+    cursor:pointer;border-radius:6px;border:1px solid rgba(255,255,255,0.1);
+    background:transparent;color:var(--muted)`;
+  wis.onclick = () => { Object.keys(watAlsKeuzes).forEach(k => delete watAlsKeuzes[k]);
+                        renderWatAls(results, program, table); };
+  if (gekozen.length) box.appendChild(wis);
+
+  toonWatAlsStand(open, table, uitEl);
+}
+
+function toonWatAlsStand(open, table, uitEl) {
+  const gekozen = open.filter(m => watAlsKeuzes[m.date + '|' + m.home + '|' + m.away]);
+  if (!gekozen.length) { uitEl.style.display = 'none'; return; }
+
+  // Huidige stand kopiëren en de gekozen uitslagen erbij optellen
+  const nieuw = table.map(t => ({ naam: t.name, punten: t.points || 0,
+                                  ds: (t.goalsFor||0) - (t.goalsAgainst||0), was: t.position }));
+  const zoek = n => nieuw.find(r => r.naam === n);
+  gekozen.forEach(m => {
+    const keuze = watAlsKeuzes[m.date + '|' + m.home + '|' + m.away];
+    const h = zoek(m.home), a = zoek(m.away);
+    if (!h || !a) return;
+    if (keuze === 'thuis') h.punten += 3;
+    else if (keuze === 'uit') a.punten += 3;
+    else { h.punten += 1; a.punten += 1; }
+  });
+
+  nieuw.sort((x, y) => y.punten - x.punten || y.ds - x.ds || x.naam.localeCompare(y.naam));
+
+  const rijen = nieuw.map((r, i) => {
+    const pos = i + 1;
+    const verschil = r.was - pos;
+    const pijl = verschil > 0 ? `<span style="color:var(--green)">▲${verschil}</span>`
+               : verschil < 0 ? `<span style="color:var(--red)">▼${-verschil}</span>`
+               : '<span style="color:var(--muted)">·</span>';
+    return `<tr class="${r.naam===ZCFC?'zcfc-row':''}">
+        <td class="l" style="color:var(--muted);font-size:11px">${pos}</td>
+        <td class="l">${r.naam}${r.naam===ZCFC?' ★':''}</td>
+        <td style="font-size:10px">${pijl}</td>
+        <td class="pts-hi">${r.punten}</td>
+      </tr>`;
+  }).join('');
+
+  uitEl.innerHTML = `
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);
+                margin-bottom:8px;font-weight:600">Stand na deze uitslagen</div>
+    <table class="stand-table"><thead><tr>
+      <th class="l">#</th><th class="l">Club</th><th></th><th>Pnt</th>
+    </tr></thead><tbody>${rijen}</tbody></table>
+    <div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5">
+      Bij gelijke punten telt het huidige doelsaldo — de uitslagen zelf zijn niet ingevuld,
+      dus het doelsaldo verandert hier niet mee.
+    </div>`;
+  uitEl.style.display = 'block';
 }
 
 // ── REISINFO UITWEDSTRIJD ──
@@ -2029,7 +2239,15 @@ function checkDesktop() {
 checkDesktop();
 window.addEventListener('resize', checkDesktop);
 
+// ── OP TELEFOON INSTALLEREN ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+
 // ── START ──
+// Losstaand van de competitiedata, zodat het ook laadt als die feed hapert
+renderTraining();
+
 fetchData()
   .then(data => renderAll(data))
   .catch(err => showError('Data kon niet worden opgehaald. Controleer je verbinding en probeer het opnieuw.'));

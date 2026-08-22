@@ -14,15 +14,16 @@ Bijgewerkt 22-08-2026.
 | — | Wedstrijdschema op Overzicht | iedereen |
 | — | Clublogo's gerepareerd (HollandseVelden hernoemde de bestanden) | — |
 | — | Worker zelfherstellend: vindt seizoen én poule zelf | — |
+| 2 | Zaterdagoverzicht hele poule (tab Wedstrijden) | toeschouwers |
+| 11 | Wat-als-simulator voor de stand (tab Kansen) | trainers |
+| 6 | Installeerbaar op telefoon (PWA) | spelers |
+| 8 | Trainingstijden van zcfc.nl (tab Club) | spelers |
 
 ## Nog open
 
 | # | Idee | Voor wie | Aantekening |
 |---|---|---|---|
-| 2 | Zaterdagoverzicht van de hele poule | toeschouwers | Data zit al in de feed, alleen tonen |
-| 11 | Wat-als-simulator voor de stand | trainers | Puur rekenwerk op bestaande data |
-| 6 | Installeerbaar op telefoon (PWA) | spelers | Icoon op thuisscherm, opent zonder browserbalk |
-| 8 | Trainingstijden & veldindeling van zcfc.nl | spelers | Ophalen met ruwe curl, niet met een samenvatter |
+| 13 | Beker- en oefenwedstrijden tonen | iedereen | zcfc.nl toont duels die NIET in de competitiefeed zitten. Worker-endpoint `/team` levert ze al mee; alleen de weergave ontbreekt nog |
 
 ## Vervallen
 
