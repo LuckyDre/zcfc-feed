@@ -452,7 +452,10 @@
 <section class="section" id="sec-prognose">
   <div class="sec-label">Winkansen komende wedstrijden</div>
   <div class="note-box">
-    Seizoenspunten 60% + vorm 30% + thuisvoordeel 10%.<br>
+    Berekend uit de doelpunten: elke club krijgt een aanvals- en verdedigingswaarde
+    ten opzichte van het competitiegemiddelde, plus thuisvoordeel. Vroeg in het
+    seizoen tellen die waarden nog maar half mee, zodat één uitschieter geen
+    extreme voorspelling geeft.<br>
     <span style="color:var(--green)">Groen</span> = thuis · <span style="color:var(--orange)">Oranje</span> = gelijk · <span style="color:var(--red)">Rood</span> = uit
   </div>
   <div id="prognose-container"><div class="loading"><div class="spinner"></div><span>Kansen berekenen…</span></div></div>
@@ -1489,6 +1492,15 @@ function getFormForTeam(teamName, results) {
 function renderVorm(table, results) {
   const el = document.getElementById('vorm-table');
   el.innerHTML = '';
+
+  // Niets gespeeld: dan is er geen vorm, en "0/12" zou lezen als beroerde vorm
+  if (!table.reduce((s, t) => s + (t.matches || 0), 0)) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:12px;line-height:1.6">
+      Er is dit seizoen nog niet gespeeld, dus er is nog geen vorm.
+      Na de eerste speelronden staat hier per club hoe het de laatste vier duels ging.</div>`;
+    return;
+  }
+
   table.forEach(t => {
     const form = getFormForTeam(t.name, results);
     while (form.length < 4) form.unshift('—');
@@ -1505,9 +1517,65 @@ function renderVorm(table, results) {
         ${form.map(r => `<span class="vorm-dot" style="background:${r!=='—'?dotC[r]+'22':'rgba(107,114,128,0.1)'};color:${r!=='—'?dotC[r]:'var(--muted)'}">${r}</span>`).join('')}
       </div>
       <div class="vorm-bar-wrap"><div class="vorm-bar" style="width:${pct}%;background:${barC(fs)}"></div></div>
-      <span class="vorm-score" style="color:${barC(fs)}">${fs}/${maxPts||12}</span>`;
+      <span class="vorm-score" style="color:${maxPts ? barC(fs) : 'var(--muted)'}">${maxPts ? fs + '/' + maxPts : '—'}</span>`;
     el.appendChild(div);
   });
+}
+
+// ── DOELPUNTENMODEL ──
+// Elke club krijgt een aanvals- en verdedigingswaarde ten opzichte van het
+// competitiegemiddelde. Daaruit volgt het verwachte aantal doelpunten per kant,
+// en daaruit de kans op winst, gelijkspel en verlies. Het gelijkspel komt zo
+// uít de berekening, in plaats van te zijn wat er toevallig overblijft.
+const GEM_DOELPUNTEN = 1.65;   // per club per wedstrijd, gebruikelijk in het amateurvoetbal
+const THUISFACTOR    = 1.15;
+const KRIMP          = 4;      // aantal duels waarna een club voor de helft meetelt
+
+function poissonKans(k, lambda) {
+  let p = Math.exp(-lambda);
+  for (let i = 1; i <= k; i++) p *= lambda / i;
+  return p;
+}
+
+// Weinig gespeeld → waarde trekt naar het gemiddelde, zodat één uitschieter
+// geen extreme voorspelling oplevert. Dat effect verdwijnt vanzelf.
+function clubSterkte(naam, table) {
+  const t = table.find(r => r.name === naam);
+  if (!t || !t.matches) return { aanval: 1, verdediging: 1, duels: 0 };
+  const krimp = (waarde, n) => 1 + (waarde - 1) * (n / (n + KRIMP));
+  return {
+    aanval:      krimp((t.goalsFor     || 0) / t.matches / GEM_DOELPUNTEN, t.matches),
+    verdediging: krimp((t.goalsAgainst || 0) / t.matches / GEM_DOELPUNTEN, t.matches),
+    duels: t.matches
+  };
+}
+
+function berekenKansen(thuisNaam, uitNaam, table) {
+  const h = clubSterkte(thuisNaam, table);
+  const a = clubSterkte(uitNaam, table);
+  const lThuis = GEM_DOELPUNTEN * h.aanval * a.verdediging * THUISFACTOR;
+  const lUit   = GEM_DOELPUNTEN * a.aanval * h.verdediging / THUISFACTOR;
+
+  let t = 0, g = 0, u = 0;
+  for (let i = 0; i <= 8; i++) {
+    for (let j = 0; j <= 8; j++) {
+      const p = poissonKans(i, lThuis) * poissonKans(j, lUit);
+      if (i > j) t += p; else if (i === j) g += p; else u += p;
+    }
+  }
+
+  // Afronden op hele procenten zonder dat het totaal 99 of 101 wordt
+  const som = t + g + u;
+  const ruw = [t, g, u].map(v => v / som * 100);
+  const heel = ruw.map(Math.floor);
+  const tekort = 100 - heel.reduce((x, y) => x + y, 0);
+  ruw.map((v, i) => ({ i, rest: v - Math.floor(v) }))
+     .sort((x, y) => y.rest - x.rest)
+     .slice(0, tekort)
+     .forEach(({ i }) => heel[i]++);
+
+  return { wH: heel[0], dr: heel[1], wA: heel[2],
+           lThuis, lUit, duels: Math.min(h.duels, a.duels) };
 }
 
 function renderPrognose(table, results, program) {
@@ -1525,21 +1593,19 @@ function renderPrognose(table, results, program) {
     return;
   }
 
+  // Niets gespeeld = niets te berekenen. Dan geen cijfers verzinnen.
+  const gespeeldTotaal = table.reduce((s, t) => s + (t.matches || 0), 0);
+  if (!gespeeldTotaal) {
+    pc.innerHTML = `<div class="card" style="color:var(--muted);font-size:12px;line-height:1.6">
+      Er is dit seizoen nog niet gespeeld, dus er valt nog niets te berekenen.
+      Zodra de eerste speelronden erop zitten, verschijnen hier de kansen per wedstrijd.</div>`;
+    return;
+  }
+
   const standMap = {};
   table.forEach(t => standMap[t.name] = t);
 
-  function calcProbs(hName, aName) {
-    const h = standMap[hName]; const a = standMap[aName];
-    if (!h || !a) return { wH:33, dr:34, wA:33 };
-    const hF = getFormForTeam(hName, results).reduce((s,r)=>s+ptsOf(r),0)/12;
-    const aF = getFormForTeam(aName, results).reduce((s,r)=>s+ptsOf(r),0)/12;
-    const tot = h.points + a.points + 0.1;
-    const hS = 0.6*(h.points/tot) + 0.3*hF + 0.1;
-    const aS = 0.6*(a.points/tot) + 0.3*aF;
-    const all = hS + aS + 0.25;
-    const wH = Math.round((hS/all)*100), wA = Math.round((aS/all)*100);
-    return { wH, dr:Math.max(0,100-wH-wA), wA };
-  }
+  const calcProbs = (hName, aName) => berekenKansen(hName, aName, table);
 
   // Groepeer per datum
   const byDate = {};
@@ -1585,6 +1651,10 @@ function renderPrognose(table, results, program) {
           <span style="color:var(--green);font-weight:600">${m.home} ${p.wH}%</span>
           <span>Gelijk ${p.dr}%</span>
           <span style="color:var(--red);font-weight:600">${p.wA}% ${m.away}</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:6px">
+          Verwachte uitslag ${p.lThuis.toFixed(1)} – ${p.lUit.toFixed(1)}
+          <span style="opacity:0.7">· op basis van ${p.duels} wedstrijd${p.duels === 1 ? '' : 'en'}</span>
         </div>`;
       pc.appendChild(box);
     });
@@ -1619,6 +1689,17 @@ function renderVormChart(table, results, zcfcRow) {
   const concurrenten = table
     .filter(t => t.position >= Math.max(1, zcfcPos-2) && t.position <= Math.min(table.length, zcfcPos+2))
     .map(t => t.name);
+
+  // Zonder gespeelde duels valt er niets te tekenen: lege grafiek met alleen
+  // stippen op nul is misleidend, dus dan een uitleg in plaats van de grafiek.
+  const grafiekKaart = document.getElementById('vorm-chart').closest('.card');
+  if (!results.filter(m => m.status === 'Uitgespeeld').length) {
+    if (grafiekKaart) {
+      grafiekKaart.innerHTML = `<div style="color:var(--muted);font-size:12px;line-height:1.6">
+        De puntopbouw verschijnt zodra er speelronden gespeeld zijn.</div>`;
+    }
+    return;
+  }
 
   const maxRounds = Math.max(...concurrenten.map(name =>
     results.filter(m => (m.home===name||m.away===name) && m.status==='Uitgespeeld').length
