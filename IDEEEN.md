@@ -19,11 +19,12 @@ Bijgewerkt 22-08-2026.
 | 6 | Installeerbaar op telefoon (PWA) | spelers |
 | 8 | Trainingstijden van zcfc.nl (tab Club) | spelers |
 
+| 13 | Beker- en oefenwedstrijden uit zcfc.nl, gemarkeerd | iedereen |
+
 ## Nog open
 
-| # | Idee | Voor wie | Aantekening |
-|---|---|---|---|
-| 13 | Beker- en oefenwedstrijden tonen | iedereen | zcfc.nl toont duels die NIET in de competitiefeed zitten. Worker-endpoint `/team` levert ze al mee; alleen de weergave ontbreekt nog |
+Niets meer uit de oorspronkelijke lijst. Ideeën die eerder langskwamen en nog
+niet gebouwd zijn, staan hieronder bij Vervallen met de reden erbij.
 
 ## Vervallen
 
