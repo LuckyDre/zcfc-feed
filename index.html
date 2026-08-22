@@ -2086,7 +2086,7 @@ function renderSelectieEditList(spelers) {
       <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);min-width:24px;text-align:right">${s.nummer || '—'}</span>
       <span style="font-size:13px;flex:1">${s.naam}</span>
       <span style="font-size:10px;color:${statusKleur[s.status]};min-width:52px;text-align:right">${statusLabel[s.status]}</span>
-      <button onclick="editSelSpeler('${s.naam.replace(/'/g,"\\'")}',${s.nummer||''},'${s.status}')"
+      <button onclick="editSelSpeler('${s.naam.replace(/'/g,"\\'")}',${Number.isFinite(s.nummer) ? s.nummer : 'null'},'${s.status}')"
         style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--muted);cursor:pointer">✏️</button>
       <button onclick="deleteSelSpeler('${s.naam.replace(/'/g,"\\'")}')","
         style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--red);cursor:pointer">✕</button>
