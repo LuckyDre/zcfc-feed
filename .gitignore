@@ -1,1 +1,7 @@
-worker/
+# Nooit geheimen in deze openbare repo. De sleutel en het wachtwoord van de
+# worker staan als "secret" in Cloudflare zelf, niet in de code.
+# Zet hier bestanden die wel geheimen bevatten:
+.dev.vars
+.dev.vars.*
+.env
+.env.*
