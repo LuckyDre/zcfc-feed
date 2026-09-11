@@ -133,7 +133,7 @@ Achterdeur (lamp) · Tuinslinger (lamp) · Tuin Sensor (beweging/temp/lux)
 - Bureau sfeerlicht
 - Bureau gaming licht
 - Bureau - beweging aan
-- Bureau - 20 min geen beweging uit
+- Bureau - 110 min geen beweging uit
 
 ### Tuin
 - Tuin avond aan
